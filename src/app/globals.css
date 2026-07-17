@@ -1,26 +1,232 @@
+@import url('https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700&display=swap');
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@custom-variant dark (&:is(.dark *));
 
+/* ---------- LIVO BEAUTY DESIGN TOKENS ----------
+ * Fonte: docs/LIVO_BEAUTY_DESIGN_SYSTEM.md
+ * Spacing: nao redefinido — o --spacing base do Tailwind v4 (0.25rem = 4px)
+ * ja bate exatamente com a escala do documento (4, 8, 12, 16 ... 128).
+ */
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --color-foreground-secondary: var(--foreground-secondary);
+  --color-surface: var(--surface);
+
+  --font-sans: "Satoshi", "General Sans", "Inter", "SF Pro Display", -apple-system,
+    BlinkMacSystemFont, sans-serif;
   --font-mono: var(--font-geist-mono);
+  --font-heading: var(--font-sans);
+
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-light: var(--primary-light);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+
+  /* Accent (doc): teal, usado apenas em confirmacoes/IA/insights.
+   * Nome "accent-teal" para nao colidir com o slot semantico --accent do
+   * shadcn (usado internamente por componentes Aria para hover/selected
+   * neutro em menus, comboboxes etc). */
+  --color-accent-teal: var(--accent-teal);
+  --color-accent-teal-light: var(--accent-teal-light);
+
+  --color-success: var(--success);
+  --color-success-light: var(--success-light);
+  --color-warning: var(--warning);
+  --color-warning-light: var(--warning-light);
+  --color-error: var(--error);
+  --color-error-light: var(--error-light);
+
+  /* Info (azul): nao existe no documento — necessario para o status
+   * "Em atendimento" da Agenda (STATUS: "Em atendimento / Azul"). */
+  --color-info: var(--info);
+  --color-info-light: var(--info-light);
+
+  /* Radius — valores fixos do documento (xs a 2xl). "Full" (9999px) usa
+   * a utilidade estatica rounded-full do Tailwind, sem token dedicado. */
+  --radius-xs: 0.25rem;
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.25rem;
+  --radius-2xl: 1.5rem;
+
+  /* Shadows — valores rgba exatos do documento */
+  --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-sm: 0 4px 10px rgba(15, 23, 42, 0.06);
+  --shadow-md: 0 8px 20px rgba(15, 23, 42, 0.08);
+  --shadow-lg: 0 20px 40px rgba(15, 23, 42, 0.1);
+
+  /* Escala tipografica — tamanhos exatos do documento. Line-heights nao
+   * constam no documento; adotados por proporcao (mais apertado em telas
+   * grandes, mais folgado em texto de corpo), a confirmar com o founder. */
+  --text-display-xl: 4rem; /* 64px */
+  --text-display-xl--line-height: 4.5rem; /* 72px */
+  --text-display-l: 3.5rem; /* 56px */
+  --text-display-l--line-height: 4rem; /* 64px */
+  --text-display-m: 3rem; /* 48px */
+  --text-display-m--line-height: 3.5rem; /* 56px */
+  --text-h1: 2.5rem; /* 40px */
+  --text-h1--line-height: 3rem; /* 48px */
+  --text-h2: 2rem; /* 32px */
+  --text-h2--line-height: 2.5rem; /* 40px */
+  --text-h3: 1.75rem; /* 28px */
+  --text-h3--line-height: 2.25rem; /* 36px */
+  --text-h4: 1.5rem; /* 24px */
+  --text-h4--line-height: 2rem; /* 32px */
+  --text-h5: 1.25rem; /* 20px */
+  --text-h5--line-height: 1.75rem; /* 28px */
+  --text-body-lg: 1.125rem; /* 18px */
+  --text-body-lg--line-height: 1.75rem; /* 28px */
+  --text-body: 1rem; /* 16px */
+  --text-body--line-height: 1.5rem; /* 24px */
+  --text-body-sm: 0.875rem; /* 14px */
+  --text-body-sm--line-height: 1.25rem; /* 20px */
+  --text-caption: 0.75rem; /* 12px */
+  --text-caption--line-height: 1rem; /* 16px */
+  --text-micro: 0.6875rem; /* 11px */
+  --text-micro--line-height: 1rem; /* 16px */
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+:root {
+  --background: #f8fafc;
+  --foreground: #111827;
+  --foreground-secondary: #4b5563;
+  --surface: #ffffff;
+
+  --card: #ffffff;
+  --card-foreground: #111827;
+  --popover: #ffffff;
+  --popover-foreground: #111827;
+
+  --primary: #7c6cf6;
+  --primary-foreground: #ffffff;
+  --primary-hover: #6b5af0;
+  --primary-light: #f3f0ff;
+
+  /* Secondary = botao "Secondary" do doc (surface branca + borda),
+   * usado pelo Button (variant="outline") e Badge. */
+  --secondary: #ffffff;
+  --secondary-foreground: #111827;
+
+  --muted: #f1f5f9;
+  --muted-foreground: #94a3b8;
+
+  /* --accent / --accent-foreground: slot neutro interno do shadcn
+   * (hover/selected em menus etc). O Accent teal da marca vive em
+   * --accent-teal, para nao ser usado indiscriminadamente. */
+  --accent: #f1f5f9;
+  --accent-foreground: #111827;
+  --accent-teal: #3dd6c1;
+  --accent-teal-light: #e8fffa;
+
+  --success: #10b981;
+  --success-light: #ecfdf5;
+  --warning: #f59e0b;
+  --warning-light: #fffbeb;
+  --error: #ef4444;
+  --error-light: #fef2f2;
+  --info: #3b82f6;
+  --info-light: #eff6ff;
+
+  --destructive: #ef4444;
+
+  --border: #e7ecf3;
+  --input: #e7ecf3;
+  --ring: #7c6cf6;
+
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: #7c6cf6;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+}
+
+/* Dark mode nao esta no escopo do documento de design (produto e
+ * light-only por enquanto). Mantido com os neutros gerados pelo shadcn
+ * apenas para nao quebrar o @custom-variant dark — nao foi ajustado nem
+ * validado visualmente. */
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.556 0 0);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
   }
-}
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
 }

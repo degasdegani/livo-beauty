@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma"
 import { requireBusinessId } from "@/lib/session"
 import { updateAppointment } from "../../actions"
 import { AppointmentForm } from "../../appointment-form"
+import { getProfessionalOptions } from "../../professional-options"
 import { toDatetimeLocalValue } from "@/lib/datetime"
 import { formatMaskValue } from "@/lib/masks"
 
@@ -24,47 +25,20 @@ export default async function EditarAgendamentoPage({
     notFound()
   }
 
-  // Inclui o profissional atual do agendamento mesmo que tenha sido desativado
-  // depois — senão o select perderia o valor selecionado.
-  const professionals = await prisma.professional.findMany({
-    where: {
-      businessId,
-      OR: [
-        { category: "SERVICE_PROVIDER", active: true },
-        { id: appointment.professionalId },
-      ],
-    },
-    include: {
-      services: {
-        include: { service: true },
-      },
-    },
-    orderBy: { name: "asc" },
-  })
-
   const selectedServiceIds = new Set(
     appointment.services.map((service) => service.serviceId)
   )
 
-  const professionalOptions = professionals.map((professional) => ({
-    id: professional.id,
-    name: professional.name,
-    // Mantem tambem servicos ja vinculados a este agendamento, mesmo que
-    // tenham sido desativados/desvinculados depois.
-    services: professional.services
-      .filter(
-        (professionalService) =>
-          professionalService.service.active ||
-          selectedServiceIds.has(professionalService.service.id)
-      )
-      .map((professionalService) => ({
-        id: professionalService.service.id,
-        name: professionalService.service.name,
-        durationMinutes: professionalService.service.durationMinutes,
-      })),
-  }))
+  const professionalOptions = await getProfessionalOptions(businessId, {
+    extraProfessionalId: appointment.professionalId,
+    keepServiceIds: selectedServiceIds,
+  })
 
-  const updateAppointmentWithId = updateAppointment.bind(null, appointment.id)
+  const updateAppointmentWithId = updateAppointment.bind(
+    null,
+    appointment.id,
+    "/agenda"
+  )
 
   return (
     <div className="flex flex-col gap-6">

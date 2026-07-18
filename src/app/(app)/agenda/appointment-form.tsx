@@ -41,11 +41,19 @@ type AppointmentFormValues = {
   notes: string
 }
 
+// Referencia estavel usada para distinguir "ainda nao submeteu" de "action
+// retornou {} de sucesso" (sem redirect) — useActionState so usa o valor
+// inicial no mount, entao comparar por identidade contra esta constante de
+// modulo funciona de forma confiavel.
+const EMPTY_FORM_STATE: AppointmentFormState = {}
+
 function AppointmentForm({
   professionals,
   action,
   submitLabel,
   cancelHref,
+  onCancel,
+  onSuccess,
   defaultValues,
   clientLocked = false,
 }: {
@@ -55,11 +63,29 @@ function AppointmentForm({
     formData: FormData
   ) => Promise<AppointmentFormState>
   submitLabel: string
-  cancelHref: string
-  defaultValues?: AppointmentFormValues
+  /** Modo pagina cheia: link de volta. Ignorado se onCancel for passado. */
+  cancelHref?: string
+  /** Modo drawer: fecha o painel em vez de navegar. */
+  onCancel?: () => void
+  /**
+   * Chamado apos a action retornar sucesso SEM redirecionar (modo drawer,
+   * quando o chamador passa redirectTo=null para create/updateAppointment).
+   * Em modo pagina cheia a action redireciona e este callback nunca dispara.
+   */
+  onSuccess?: () => void
+  defaultValues?: Partial<AppointmentFormValues>
   clientLocked?: boolean
 }) {
-  const [state, formAction, isPending] = React.useActionState(action, {})
+  const [state, formAction, isPending] = React.useActionState(
+    action,
+    EMPTY_FORM_STATE
+  )
+
+  React.useEffect(() => {
+    if (!isPending && state !== EMPTY_FORM_STATE && !state.error) {
+      onSuccess?.()
+    }
+  }, [state, isPending, onSuccess])
 
   const [professionalId, setProfessionalId] = React.useState(
     defaultValues?.professionalId ?? ""
@@ -409,9 +435,15 @@ function AppointmentForm({
             </p>
           ) : null}
           <div className="flex w-full justify-end gap-3">
-            <LinkButton href={cancelHref} variant="outline">
-              Cancelar
-            </LinkButton>
+            {onCancel ? (
+              <Button type="button" variant="outline" onPress={onCancel}>
+                Cancelar
+              </Button>
+            ) : cancelHref ? (
+              <LinkButton href={cancelHref} variant="outline">
+                Cancelar
+              </LinkButton>
+            ) : null}
             <Button type="submit" variant="default" isDisabled={isPending}>
               {isPending ? "Salvando..." : submitLabel}
             </Button>
@@ -423,3 +455,4 @@ function AppointmentForm({
 }
 
 export { AppointmentForm }
+export type { ProfessionalOption, AppointmentFormValues }

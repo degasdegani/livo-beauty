@@ -43,3 +43,56 @@ export function formatTimeBR(date: Date): string {
     minute: "2-digit",
   }).format(date)
 }
+
+/** Data corrente (ex: "2026-07-18") em horario de Brasilia, formato YYYY-MM-DD. */
+export function todaySaoPauloDateString(): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date())
+}
+
+export function isValidDateString(value: string | undefined): value is string {
+  return !!value && /^\d{4}-\d{2}-\d{2}$/.test(value)
+}
+
+/** dateStr (YYYY-MM-DD) + minutos desde meia-noite -> Date, em horario de Brasilia. */
+export function combineSaoPauloDateAndMinutes(
+  dateStr: string,
+  minutesSinceMidnight: number
+): Date {
+  const hh = String(Math.floor(minutesSinceMidnight / 60)).padStart(2, "0")
+  const mm = String(minutesSinceMidnight % 60).padStart(2, "0")
+  return new Date(`${dateStr}T${hh}:${mm}:00-03:00`)
+}
+
+/** Faixa [inicio, fim) do dia (00:00 a 00:00 do dia seguinte) em horario de Brasilia. */
+export function saoPauloDayRange(dateStr: string): { start: Date; end: Date } {
+  const start = combineSaoPauloDateAndMinutes(dateStr, 0)
+  const end = new Date(start.getTime() + 24 * 60 * 60 * 1000)
+  return { start, end }
+}
+
+/** dateStr (YYYY-MM-DD) +/- N dias, sem depender do fuso horario do navegador. */
+export function shiftDateString(dateStr: string, days: number): string {
+  const [year, month, day] = dateStr.split("-").map(Number)
+  const date = new Date(Date.UTC(year, month - 1, day))
+  date.setUTCDate(date.getUTCDate() + days)
+  return date.toISOString().slice(0, 10)
+}
+
+/** Rotulo por extenso (ex: "sexta-feira, 18 de julho de 2026") para o cabecalho da agenda. */
+export function formatSaoPauloDateLabel(dateStr: string): string {
+  // Meio-dia evita qualquer ambiguidade de fronteira de dia ao converter.
+  const date = new Date(`${dateStr}T12:00:00-03:00`)
+  const label = new Intl.DateTimeFormat("pt-BR", {
+    timeZone: TIME_ZONE,
+    weekday: "long",
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  }).format(date)
+  return label.charAt(0).toUpperCase() + label.slice(1)
+}

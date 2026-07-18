@@ -25,6 +25,12 @@ export default async function AppLayout({
               Agenda
             </Link>
             <Link
+              href="/agenda/lista"
+              className="text-micro text-muted-foreground transition-colors hover:text-foreground-secondary"
+            >
+              Ver como lista
+            </Link>
+            <Link
               href="/profissionais"
               className="text-body-sm text-foreground-secondary transition-colors hover:text-foreground"
             >

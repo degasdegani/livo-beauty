@@ -42,10 +42,6 @@ export default async function ProfissionaisPage() {
         </LinkButton>
       </div>
 
-      {/* TODO: tela de vínculo profissional-serviço (ProfessionalService),
-       * com definição de commissionPercent por serviço — próxima iteração
-       * deste módulo. */}
-
       {professionals.length === 0 ? (
         <Card>
           <CardContent className="py-10 text-center text-body-sm text-muted-foreground">

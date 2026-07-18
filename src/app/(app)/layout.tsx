@@ -1,0 +1,41 @@
+import type { ReactNode } from "react"
+import Link from "next/link"
+
+import { requireBusinessId } from "@/lib/session"
+
+export default async function AppLayout({
+  children,
+}: {
+  children: ReactNode
+}) {
+  await requireBusinessId()
+
+  return (
+    <div className="flex min-h-full flex-col">
+      <header className="border-b border-border bg-surface">
+        <div className="mx-auto flex max-w-[1440px] items-center gap-8 px-10 py-4">
+          <span className="text-body font-medium text-foreground">
+            LIVO Beauty
+          </span>
+          <nav className="flex items-center gap-6">
+            <Link
+              href="/profissionais"
+              className="text-body-sm text-foreground-secondary transition-colors hover:text-foreground"
+            >
+              Profissionais
+            </Link>
+            <Link
+              href="/servicos"
+              className="text-body-sm text-foreground-secondary transition-colors hover:text-foreground"
+            >
+              Serviços
+            </Link>
+          </nav>
+        </div>
+      </header>
+      <main className="mx-auto flex w-full max-w-[1440px] flex-1 flex-col gap-8 px-10 py-10">
+        {children}
+      </main>
+    </div>
+  )
+}

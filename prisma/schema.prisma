@@ -21,7 +21,9 @@ model Business {
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
 
-  users             User[]
+  users         User[]
+  professionals Professional[]
+  services      Service[]
 
   @@map("businesses")
 }
@@ -42,14 +44,15 @@ model User {
   password      String?
   role          UserRole  @default(OWNER)
 
-  businessId    String
-  business      Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
 
-  accounts      Account[]
-  sessions      Session[]
+  accounts     Account[]
+  sessions     Session[]
+  professional Professional?
 
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([businessId])
   @@map("users")
@@ -58,6 +61,7 @@ model User {
 enum UserRole {
   OWNER
   STAFF
+  PROFESSIONAL
 }
 
 model Account {
@@ -97,4 +101,60 @@ model VerificationToken {
 
   @@unique([identifier, token])
   @@map("verification_tokens")
+}
+
+// ---------- PROFISSIONAIS + SERVICOS ----------
+
+model Professional {
+  id         String                @id @default(cuid())
+  businessId String
+  business   Business              @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  userId     String?               @unique
+  user       User?                 @relation(fields: [userId], references: [id], onDelete: SetNull)
+  name       String
+  phone      String?
+  category   ProfessionalCategory  @default(SERVICE_PROVIDER)
+  active     Boolean               @default(true)
+  services   ProfessionalService[]
+  createdAt  DateTime              @default(now())
+  updatedAt  DateTime              @updatedAt
+
+  @@index([businessId])
+  @@map("professionals")
+}
+
+enum ProfessionalCategory {
+  RECEPTION
+  SERVICE_PROVIDER
+}
+
+model Service {
+  id              String                @id @default(cuid())
+  businessId      String
+  business        Business              @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  name            String
+  description     String?
+  durationMinutes Int
+  price           Decimal               @db.Decimal(10, 2)
+  active          Boolean               @default(true)
+  professionals   ProfessionalService[]
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+
+  @@index([businessId])
+  @@map("services")
+}
+
+model ProfessionalService {
+  id                String       @id @default(cuid())
+  professionalId    String
+  professional      Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  serviceId         String
+  service           Service      @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  commissionPercent Decimal      @db.Decimal(5, 2)
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  @@unique([professionalId, serviceId])
+  @@map("professional_services")
 }

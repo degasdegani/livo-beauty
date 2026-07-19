@@ -11,6 +11,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "LIVO Beauty",
   description: "Plataforma SaaS para saloes de beleza e clinicas de estetica.",
+  manifest: "/manifest.json",
 };
 
 export default function RootLayout({

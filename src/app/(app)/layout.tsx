@@ -2,6 +2,7 @@ import type { ReactNode } from "react"
 import Link from "next/link"
 
 import { requireBusinessId } from "@/lib/session"
+import { ServiceWorkerRegistration } from "@/components/pwa/service-worker-registration"
 
 export default async function AppLayout({
   children,
@@ -12,6 +13,7 @@ export default async function AppLayout({
 
   return (
     <div className="flex min-h-full flex-col">
+      <ServiceWorkerRegistration />
       <header className="border-b border-border bg-surface">
         <div className="mx-auto flex max-w-[1440px] items-center gap-8 px-10 py-4">
           <span className="text-body font-medium text-foreground">

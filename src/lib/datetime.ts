@@ -44,6 +44,15 @@ export function formatTimeBR(date: Date): string {
   }).format(date)
 }
 
+export function formatDateBR(date: Date): string {
+  return new Intl.DateTimeFormat("pt-BR", {
+    timeZone: TIME_ZONE,
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(date)
+}
+
 /** Data corrente (ex: "2026-07-18") em horario de Brasilia, formato YYYY-MM-DD. */
 export function todaySaoPauloDateString(): string {
   return new Intl.DateTimeFormat("en-CA", {

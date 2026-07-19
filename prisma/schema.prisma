@@ -210,21 +210,22 @@ model ProfessionalBlock {
 }
 
 model Appointment {
-  id             String               @id @default(cuid())
-  businessId     String
-  business       Business             @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  professionalId String
-  professional   Professional         @relation(fields: [professionalId], references: [id], onDelete: Restrict)
-  clientId       String
-  client         Client               @relation(fields: [clientId], references: [id], onDelete: Restrict)
-  startAt        DateTime
-  endAt          DateTime
-  room           String?
-  status         AppointmentStatus    @default(CONFIRMADO)
-  notes          String?
-  services       AppointmentService[]
-  createdAt      DateTime             @default(now())
-  updatedAt      DateTime             @updatedAt
+  id                 String               @id @default(cuid())
+  businessId         String
+  business           Business             @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  professionalId     String
+  professional       Professional         @relation(fields: [professionalId], references: [id], onDelete: Restrict)
+  clientId           String
+  client             Client               @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  startAt            DateTime
+  endAt              DateTime
+  room               String?
+  status             AppointmentStatus    @default(CONFIRMADO)
+  notes              String?
+  services           AppointmentService[]
+  pushReminderSentAt DateTime?
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
 
   @@index([businessId])
   @@index([professionalId, startAt])

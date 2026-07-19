@@ -1,119 +1,119 @@
 import { prisma } from "@/lib/prisma"
 import { requireBusinessId } from "@/lib/session"
-import { cancelAppointment } from "./actions"
-import { Button, LinkButton } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import { Badge, type badgeVariants } from "@/components/ui/badge"
-import { formatDateTimeBR, formatTimeBR } from "@/lib/datetime"
-import type { AppointmentStatus } from "@/generated/prisma/client"
-import type { VariantProps } from "class-variance-authority"
+import {
+  formatDateTimeBR,
+  isValidDateString,
+  saoPauloDayRange,
+  todaySaoPauloDateString,
+} from "@/lib/datetime"
+import { getProfessionalOptions } from "./professional-options"
+import { AGENDA_WINDOW_START_MINUTES, AGENDA_WINDOW_END_MINUTES } from "./constants"
+import {
+  DayCalendar,
+  type AppointmentBlockData,
+  type ProfessionalBlockData,
+} from "./day-calendar"
 
-const STATUS_LABEL: Record<AppointmentStatus, string> = {
-  CONFIRMADO: "Confirmado",
-  EM_ATENDIMENTO: "Em atendimento",
-  CONCLUIDO: "Concluído",
-  CANCELADO: "Cancelado",
-  AUSENTE: "Ausente",
-  REAGENDADO: "Reagendado",
+/** Recorta [rawStart, rawEnd) (minutos desde a meia-noite do dia exibido) para a janela fixa da grade. */
+function clampToWindow(
+  rawStart: number,
+  rawEnd: number
+): { startMinutes: number; durationMinutes: number } {
+  const startMinutes = Math.max(rawStart, AGENDA_WINDOW_START_MINUTES)
+  const endMinutes = Math.min(rawEnd, AGENDA_WINDOW_END_MINUTES)
+  return { startMinutes, durationMinutes: Math.max(endMinutes - startMinutes, 0) }
 }
 
-const STATUS_BADGE_VARIANT: Record<
-  AppointmentStatus,
-  NonNullable<VariantProps<typeof badgeVariants>["variant"]>
-> = {
-  CONFIRMADO: "confirmado",
-  EM_ATENDIMENTO: "em-atendimento",
-  CONCLUIDO: "concluido",
-  CANCELADO: "cancelado",
-  AUSENTE: "ausente",
-  REAGENDADO: "reagendado",
-}
-
-export default async function AgendaPage() {
+export default async function AgendaPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ date?: string }>
+}) {
   const businessId = await requireBusinessId()
+  const { date: dateParam } = await searchParams
+  const today = todaySaoPauloDateString()
+  const date = isValidDateString(dateParam) ? dateParam : today
 
-  const appointments = await prisma.appointment.findMany({
-    where: { businessId },
-    include: {
-      client: true,
-      professional: true,
-      services: { include: { service: true } },
-    },
-    orderBy: { startAt: "asc" },
-  })
+  const { start, end } = saoPauloDayRange(date)
+
+  const professionals = await getProfessionalOptions(businessId)
+  const professionalIds = professionals.map((professional) => professional.id)
+
+  const [appointmentRows, blockRows] = await Promise.all([
+    professionalIds.length > 0
+      ? prisma.appointment.findMany({
+          where: {
+            businessId,
+            professionalId: { in: professionalIds },
+            startAt: { lt: end },
+            endAt: { gt: start },
+          },
+          include: { client: true, services: { include: { service: true } } },
+          orderBy: { startAt: "asc" },
+        })
+      : Promise.resolve([]),
+    professionalIds.length > 0
+      ? prisma.professionalBlock.findMany({
+          where: {
+            professionalId: { in: professionalIds },
+            startAt: { lt: end },
+            endAt: { gt: start },
+          },
+        })
+      : Promise.resolve([]),
+  ])
+
+  const appointments: AppointmentBlockData[] = appointmentRows
+    .map((appointment) => {
+      const rawStart = (appointment.startAt.getTime() - start.getTime()) / 60_000
+      const rawEnd = (appointment.endAt.getTime() - start.getTime()) / 60_000
+      const { startMinutes, durationMinutes } = clampToWindow(rawStart, rawEnd)
+
+      return {
+        id: appointment.id,
+        professionalId: appointment.professionalId,
+        clientName: appointment.client.name,
+        serviceLabel: appointment.services
+          .map((service) => service.service.name)
+          .join(", "),
+        status: appointment.status,
+        room: appointment.room,
+        startMinutes,
+        durationMinutes,
+      }
+    })
+    // Fora da janela fixa 06:00-24:00 (ex: agendamento cruzando a madrugada)
+    // — nao ha onde desenhar na grade atual; ficam ocultos aqui ate a janela
+    // virar dinamica via BusinessHours.
+    .filter((appointment) => appointment.durationMinutes > 0)
+
+  const blocks: ProfessionalBlockData[] = blockRows
+    .map((block) => {
+      const rawStart = (block.startAt.getTime() - start.getTime()) / 60_000
+      const rawEnd = (block.endAt.getTime() - start.getTime()) / 60_000
+      const { startMinutes, durationMinutes } = clampToWindow(rawStart, rawEnd)
+
+      return {
+        id: block.id,
+        professionalId: block.professionalId,
+        reason: block.reason,
+        startMinutes,
+        durationMinutes,
+        // Periodo real do bloqueio, sem o recorte da janela da grade — o
+        // bloqueio pode abranger varios dias (ex: ferias).
+        rangeLabel: `${formatDateTimeBR(block.startAt)} – ${formatDateTimeBR(block.endAt)}`,
+      }
+    })
+    .filter((block) => block.durationMinutes > 0)
 
   return (
-    <div className="flex flex-col gap-8">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-h2 font-medium text-foreground">Agenda</h1>
-          <p className="text-body-sm text-foreground-secondary">
-            Lista de agendamentos — a visão de calendário chega na próxima
-            etapa.
-          </p>
-        </div>
-        <LinkButton href="/agenda/novo" variant="default">
-          Novo agendamento
-        </LinkButton>
-      </div>
-
-      {appointments.length === 0 ? (
-        <Card>
-          <CardContent className="py-10 text-center text-body-sm text-muted-foreground">
-            Nenhum agendamento cadastrado ainda.
-          </CardContent>
-        </Card>
-      ) : (
-        <Card>
-          <CardContent className="flex flex-col divide-y divide-border p-0">
-            {appointments.map((appointment) => (
-              <div
-                key={appointment.id}
-                className="flex flex-col gap-2 p-4 sm:flex-row sm:items-center sm:justify-between"
-              >
-                <div className="flex flex-col gap-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-body-sm font-medium text-foreground">
-                      {appointment.client.name}
-                    </span>
-                    <Badge variant={STATUS_BADGE_VARIANT[appointment.status]}>
-                      {STATUS_LABEL[appointment.status]}
-                    </Badge>
-                  </div>
-                  <span className="text-body-sm text-foreground-secondary">
-                    {appointment.professional.name} ·{" "}
-                    {appointment.services
-                      .map((service) => service.service.name)
-                      .join(", ")}
-                  </span>
-                  <span className="text-micro text-muted-foreground">
-                    {formatDateTimeBR(appointment.startAt)} –{" "}
-                    {formatTimeBR(appointment.endAt)}
-                    {appointment.room ? ` · ${appointment.room}` : ""}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <LinkButton
-                    href={`/agenda/${appointment.id}/editar`}
-                    variant="outline"
-                    size="sm"
-                  >
-                    Editar
-                  </LinkButton>
-                  {appointment.status !== "CANCELADO" &&
-                  appointment.status !== "CONCLUIDO" ? (
-                    <form action={cancelAppointment.bind(null, appointment.id)}>
-                      <Button type="submit" variant="destructive" size="sm">
-                        Cancelar
-                      </Button>
-                    </form>
-                  ) : null}
-                </div>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      )}
-    </div>
+    <DayCalendar
+      key={date}
+      date={date}
+      today={today}
+      professionals={professionals}
+      appointments={appointments}
+      blocks={blocks}
+    />
   )
 }

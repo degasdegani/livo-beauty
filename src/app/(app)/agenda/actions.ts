@@ -11,6 +11,12 @@ import {
   toDatetimeLocalValue,
 } from "@/lib/datetime"
 import { formatMaskValue } from "@/lib/masks"
+import {
+  buildConfirmationMessage,
+  buildNoShowMessage,
+  buildReminderMessage,
+  buildWhatsappUrl,
+} from "@/lib/whatsapp"
 import type { AppointmentStatus } from "@/generated/prisma/client"
 
 export type AppointmentFormState = {
@@ -425,6 +431,12 @@ export async function rescheduleAppointment(
   return {}
 }
 
+export type WhatsappActionUrls = {
+  confirmationUrl: string
+  reminderUrl: string
+  noShowUrl: string
+}
+
 export type AppointmentEditDataResult =
   | {
       error: string
@@ -441,6 +453,7 @@ export type AppointmentEditDataResult =
         room: string
         notes: string
         status: AppointmentStatus
+        whatsapp: WhatsappActionUrls
       }
     }
 
@@ -452,9 +465,26 @@ export async function getAppointmentEditData(
 
   const appointment = await prisma.appointment.findFirst({
     where: { id, businessId },
-    include: { client: true, services: true },
+    include: {
+      client: true,
+      professional: true,
+      business: true,
+      services: { include: { service: true } },
+    },
   })
   if (!appointment) return { error: "Agendamento não encontrado." }
+
+  // Mensagens/URLs sao montadas aqui (server action) e nao em lib/whatsapp.ts
+  // direto no client component, para nao expor telefone/nome do cliente
+  // formatados no bundle JS — o Drawer so recebe as 3 URLs finais.
+  const whatsappData = {
+    clientName: appointment.client.name,
+    clientPhone: appointment.client.phone,
+    businessName: appointment.business.name,
+    professionalName: appointment.professional.name,
+    serviceNames: appointment.services.map((service) => service.service.name),
+    startAt: appointment.startAt,
+  }
 
   return {
     defaultValues: {
@@ -466,6 +496,20 @@ export async function getAppointmentEditData(
       room: appointment.room ?? "",
       notes: appointment.notes ?? "",
       status: appointment.status,
+      whatsapp: {
+        confirmationUrl: buildWhatsappUrl(
+          appointment.client.phone,
+          buildConfirmationMessage(whatsappData)
+        ),
+        reminderUrl: buildWhatsappUrl(
+          appointment.client.phone,
+          buildReminderMessage(whatsappData)
+        ),
+        noShowUrl: buildWhatsappUrl(
+          appointment.client.phone,
+          buildNoShowMessage(whatsappData)
+        ),
+      },
     },
   }
 }

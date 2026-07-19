@@ -9,10 +9,12 @@ import {
   type AppointmentFormValues,
 } from "./appointment-form"
 import { AppointmentStatusActions } from "./appointment-status-actions"
+import { AppointmentWhatsappActions } from "./appointment-whatsapp-actions"
 import {
   createAppointment,
   updateAppointment,
   getAppointmentEditData,
+  type WhatsappActionUrls,
 } from "./actions"
 import type { AppointmentStatus } from "@/generated/prisma/client"
 
@@ -21,7 +23,10 @@ export type AppointmentDrawerState =
   | { mode: "create"; professionalId: string; startAt: string }
   | { mode: "edit"; appointmentId: string }
 
-type EditFormValues = Partial<AppointmentFormValues> & { status: AppointmentStatus }
+type EditFormValues = Partial<AppointmentFormValues> & {
+  status: AppointmentStatus
+  whatsapp: WhatsappActionUrls
+}
 
 export function AppointmentDrawer({
   state,
@@ -89,6 +94,7 @@ export function AppointmentDrawer({
             currentStatus={editValues.status}
             onChanged={handleStatusChanged}
           />
+          <AppointmentWhatsappActions urls={editValues.whatsapp} />
           <AppointmentForm
             key={state.appointmentId}
             professionals={professionals}

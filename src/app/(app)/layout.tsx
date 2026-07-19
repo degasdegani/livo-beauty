@@ -19,6 +19,18 @@ export default async function AppLayout({
           </span>
           <nav className="flex items-center gap-6">
             <Link
+              href="/agenda"
+              className="text-body-sm text-foreground-secondary transition-colors hover:text-foreground"
+            >
+              Agenda
+            </Link>
+            <Link
+              href="/agenda/lista"
+              className="text-micro text-muted-foreground transition-colors hover:text-foreground-secondary"
+            >
+              Ver como lista
+            </Link>
+            <Link
               href="/profissionais"
               className="text-body-sm text-foreground-secondary transition-colors hover:text-foreground"
             >

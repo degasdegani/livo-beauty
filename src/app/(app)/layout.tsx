@@ -44,6 +44,12 @@ export default async function AppLayout({
             >
               Serviços
             </Link>
+            <Link
+              href="/configuracoes"
+              className="text-body-sm text-foreground-secondary transition-colors hover:text-foreground"
+            >
+              Configurações
+            </Link>
           </nav>
         </div>
       </header>

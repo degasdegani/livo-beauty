@@ -92,6 +92,20 @@ export function shiftDateString(dateStr: string, days: number): string {
   return date.toISOString().slice(0, 10)
 }
 
+/**
+ * Data sem horario (ex: data de nascimento). Armazenada ao meio-dia UTC —
+ * qualquer fuso do processo (-12h a +14h) ainda cai no mesmo dia calendario
+ * ao formatar de volta, sem depender de America/Sao_Paulo.
+ */
+export function parseDateOnlyInput(value: string): Date {
+  return new Date(`${value}T12:00:00Z`)
+}
+
+/** Date armazenado (ver parseDateOnlyInput) -> valor para <input type="date">. */
+export function toDateInputValue(date: Date): string {
+  return date.toISOString().slice(0, 10)
+}
+
 /** Rotulo por extenso (ex: "sexta-feira, 18 de julho de 2026") para o cabecalho da agenda. */
 export function formatSaoPauloDateLabel(dateStr: string): string {
   // Meio-dia evita qualquer ambiguidade de fronteira de dia ao converter.

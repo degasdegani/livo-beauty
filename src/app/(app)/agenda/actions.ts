@@ -6,6 +6,10 @@ import { redirect } from "next/navigation"
 import { prisma } from "@/lib/prisma"
 import { requireBusinessId } from "@/lib/session"
 import {
+  getAppointmentsVisibleToUser,
+  getClientsVisibleToUser,
+} from "@/lib/access"
+import {
   combineSaoPauloDateAndMinutes,
   parseLocalDatetimeInput,
   toDatetimeLocalValue,
@@ -128,13 +132,12 @@ const CLIENT_SEARCH_LIMIT = 5
  * e o padrao de uso real de quem esta atendendo por telefone.
  */
 export async function searchClientsByPhone(phoneRaw: string) {
-  const businessId = await requireBusinessId()
   const digits = phoneRaw.replace(/\D/g, "")
 
   if (digits.length < CLIENT_SEARCH_MIN_DIGITS) return []
 
   return prisma.client.findMany({
-    where: { businessId, phone: { contains: digits } },
+    where: { ...(await getClientsVisibleToUser()), phone: { contains: digits } },
     select: { id: true, name: true, phone: true },
     orderBy: { name: "asc" },
     take: CLIENT_SEARCH_LIMIT,
@@ -461,10 +464,8 @@ export type AppointmentEditDataResult =
 export async function getAppointmentEditData(
   id: string
 ): Promise<AppointmentEditDataResult> {
-  const businessId = await requireBusinessId()
-
   const appointment = await prisma.appointment.findFirst({
-    where: { id, businessId },
+    where: { id, ...(await getAppointmentsVisibleToUser()) },
     include: {
       client: true,
       professional: true,

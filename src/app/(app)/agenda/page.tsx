@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma"
 import { requireBusinessId } from "@/lib/session"
+import { getAppointmentsVisibleToUser } from "@/lib/access"
 import {
   formatDateTimeBR,
   isValidDateString,
@@ -38,12 +39,13 @@ export default async function AgendaPage({
 
   const professionals = await getProfessionalOptions(businessId)
   const professionalIds = professionals.map((professional) => professional.id)
+  const appointmentsVisibleWhere = await getAppointmentsVisibleToUser()
 
   const [appointmentRows, blockRows] = await Promise.all([
     professionalIds.length > 0
       ? prisma.appointment.findMany({
           where: {
-            businessId,
+            ...appointmentsVisibleWhere,
             professionalId: { in: professionalIds },
             startAt: { lt: end },
             endAt: { gt: start },

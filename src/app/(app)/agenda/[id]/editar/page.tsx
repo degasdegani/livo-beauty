@@ -2,6 +2,7 @@ import { notFound } from "next/navigation"
 
 import { prisma } from "@/lib/prisma"
 import { requireBusinessId } from "@/lib/session"
+import { getAppointmentsVisibleToUser } from "@/lib/access"
 import { updateAppointment } from "../../actions"
 import { AppointmentForm } from "../../appointment-form"
 import { getProfessionalOptions } from "../../professional-options"
@@ -17,7 +18,7 @@ export default async function EditarAgendamentoPage({
   const businessId = await requireBusinessId()
 
   const appointment = await prisma.appointment.findFirst({
-    where: { id, businessId },
+    where: { id, ...(await getAppointmentsVisibleToUser()) },
     include: { client: true, services: true },
   })
 

@@ -33,6 +33,12 @@ export default async function AppLayout({
               Ver como lista
             </Link>
             <Link
+              href="/clientes"
+              className="text-body-sm text-foreground-secondary transition-colors hover:text-foreground"
+            >
+              Clientes
+            </Link>
+            <Link
               href="/profissionais"
               className="text-body-sm text-foreground-secondary transition-colors hover:text-foreground"
             >

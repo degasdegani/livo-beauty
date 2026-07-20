@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma"
 import { requireBusinessId } from "@/lib/session"
+import { getAppointmentsVisibleToUser } from "@/lib/access"
 import { cancelAppointment } from "../actions"
 import { STATUS_LABEL, STATUS_BADGE_VARIANT } from "../status"
 import { Button, LinkButton } from "@/components/ui/button"
@@ -8,10 +9,10 @@ import { Badge } from "@/components/ui/badge"
 import { formatDateTimeBR, formatTimeBR } from "@/lib/datetime"
 
 export default async function AgendaListaPage() {
-  const businessId = await requireBusinessId()
+  await requireBusinessId()
 
   const appointments = await prisma.appointment.findMany({
-    where: { businessId },
+    where: await getAppointmentsVisibleToUser(),
     include: {
       client: true,
       professional: true,

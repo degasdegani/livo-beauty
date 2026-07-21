@@ -48,3 +48,13 @@ export function buildNoShowMessage(data: WhatsappAppointmentData): string {
 export function buildWhatsappUrl(phone: string, message: string): string {
   return `https://wa.me/${sanitizePhoneForWhatsapp(phone)}?text=${encodeURIComponent(message)}`
 }
+
+export type WhatsappLowStockData = {
+  productName: string
+  currentStock: number
+  unit: string
+}
+
+export function buildLowStockMessage(data: WhatsappLowStockData): string {
+  return `Olá! Gostaria de fazer um pedido de reposição de ${data.productName}. Estoque atual: ${data.currentStock} ${data.unit}. Pode me passar disponibilidade e prazo?`
+}

@@ -2,9 +2,9 @@ import { redirect } from "next/navigation"
 
 import { auth } from "@/lib/auth"
 import { requireProfessionalId } from "@/lib/session"
-import type { Prisma } from "@/generated/prisma/client"
+import type { Prisma, UserRole } from "@/generated/prisma/client"
 
-async function requireSessionUser() {
+export async function requireSessionUser() {
   const session = await auth()
   const businessId = session?.user?.businessId
   const role = session?.user?.role
@@ -44,4 +44,18 @@ export async function getAppointmentsVisibleToUser(): Promise<Prisma.Appointment
   }
 
   return { businessId }
+}
+
+/**
+ * Produtos/Estoque e Fornecedores nao tem recorte por profissional (nao sao
+ * dados "do atendimento") — e um modulo de gestao, por isso o controle e
+ * so um booleano de papel, nao um filtro de Prisma.WhereInput como os acima.
+ */
+export function canAccessProducts(role: UserRole): boolean {
+  return role === "OWNER" || role === "STAFF"
+}
+
+/** Preco de custo (fornecedor) e informacao sensivel de negocio — so o OWNER ve. */
+export function canViewCostPrice(role: UserRole): boolean {
+  return role === "OWNER"
 }

@@ -17,6 +17,7 @@ model Business {
   phone             String?
   businessType      BusinessType @default(SALON)
   prontuarioEnabled Boolean      @default(false)
+  hasReception      Boolean      @default(false)
   plan              String       @default("trial")
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
@@ -29,6 +30,9 @@ model Business {
   appointments  Appointment[]
   products      Product[]
   suppliers     Supplier[]
+  commands      Command[]
+  transactions  Transaction[]
+  payables      Payable[]
 
   @@map("businesses")
 }
@@ -111,21 +115,24 @@ model VerificationToken {
 // ---------- PROFISSIONAIS + SERVICOS ----------
 
 model Professional {
-  id                String                @id @default(cuid())
-  businessId        String
-  business          Business              @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  userId            String?               @unique
-  user              User?                 @relation(fields: [userId], references: [id], onDelete: SetNull)
-  name              String
-  phone             String?
-  category          ProfessionalCategory  @default(SERVICE_PROVIDER)
-  active            Boolean               @default(true)
-  services          ProfessionalService[]
-  blocks            ProfessionalBlock[]
-  appointments      Appointment[]
-  pushSubscriptions PushSubscription[]
-  createdAt         DateTime              @default(now())
-  updatedAt         DateTime              @updatedAt
+  id                   String                @id @default(cuid())
+  businessId           String
+  business             Business              @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  userId               String?               @unique
+  user                 User?                 @relation(fields: [userId], references: [id], onDelete: SetNull)
+  name                 String
+  phone                String?
+  category             ProfessionalCategory  @default(SERVICE_PROVIDER)
+  active               Boolean               @default(true)
+  services             ProfessionalService[]
+  blocks               ProfessionalBlock[]
+  appointments         Appointment[]
+  pushSubscriptions    PushSubscription[]
+  commandItems         CommandItem[]
+  professionalProducts ProfessionalProduct[]
+  payables             Payable[]
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
 
   @@index([businessId])
   @@map("professionals")
@@ -147,6 +154,7 @@ model Service {
   active              Boolean               @default(true)
   professionals       ProfessionalService[]
   appointmentServices AppointmentService[]
+  commandItems        CommandItem[]
   createdAt           DateTime              @default(now())
   updatedAt           DateTime              @updatedAt
 
@@ -171,12 +179,12 @@ model ProfessionalService {
 // ---------- AGENDA ----------
 
 model Client {
-  id                   String        @id @default(cuid())
+  id                   String   @id @default(cuid())
   businessId           String
-  business             Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  business             Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
   name                 String
   phone                String
-  fullProfileCompleted Boolean       @default(false)
+  fullProfileCompleted Boolean  @default(false)
 
   birthDate DateTime?
   instagram String?
@@ -191,6 +199,7 @@ model Client {
   addressZipCode      String?
 
   appointments Appointment[]
+  commands     Command[]
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
 
@@ -246,6 +255,7 @@ model Appointment {
   status             AppointmentStatus    @default(CONFIRMADO)
   notes              String?
   services           AppointmentService[]
+  command            Command?
   pushReminderSentAt DateTime?
   createdAt          DateTime             @default(now())
   updatedAt          DateTime             @updatedAt
@@ -298,20 +308,22 @@ enum ProductSaleType {
 }
 
 model Product {
-  id                String            @id @default(cuid())
-  businessId        String
-  business          Business          @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  name              String
-  sku               String?
-  unit              String
-  saleType          ProductSaleType   @default(VENDA)
-  salePrice         Decimal?          @db.Decimal(10, 2)
-  currentStock      Int               @default(0)
-  lowStockThreshold Int               @default(5)
-  active            Boolean           @default(true)
-  createdAt         DateTime          @default(now())
-  updatedAt         DateTime          @updatedAt
-  suppliers         ProductSupplier[]
+  id                   String                @id @default(cuid())
+  businessId           String
+  business             Business              @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  name                 String
+  sku                  String?
+  unit                 String
+  saleType             ProductSaleType       @default(VENDA)
+  salePrice            Decimal?              @db.Decimal(10, 2)
+  currentStock         Int                   @default(0)
+  lowStockThreshold    Int                   @default(5)
+  active               Boolean               @default(true)
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  suppliers            ProductSupplier[]
+  commandItems         CommandItem[]
+  professionalProducts ProfessionalProduct[]
 
   @@index([businessId])
   @@map("products")
@@ -329,6 +341,7 @@ model Supplier {
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
   products    ProductSupplier[]
+  payables    Payable[]
 
   @@index([businessId])
   @@map("suppliers")
@@ -349,4 +362,141 @@ model ProductSupplier {
   @@index([productId])
   @@index([supplierId])
   @@map("product_suppliers")
+}
+
+// ---------- FINANCEIRO / COMANDA ----------
+
+enum CommandStatus {
+  ABERTA
+  FECHADA
+  CANCELADA
+}
+
+model Command {
+  id            String           @id @default(cuid())
+  businessId    String
+  business      Business         @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  appointmentId String?          @unique
+  appointment   Appointment?     @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+  clientId      String
+  client        Client           @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  status        CommandStatus    @default(ABERTA)
+  openedAt      DateTime         @default(now())
+  closedAt      DateTime?
+  items         CommandItem[]
+  payments      CommandPayment[]
+
+  @@index([businessId])
+  @@map("commands")
+}
+
+enum CommandItemType {
+  SERVICO
+  PRODUTO
+}
+
+model CommandItem {
+  id                String          @id @default(cuid())
+  commandId         String
+  command           Command         @relation(fields: [commandId], references: [id], onDelete: Cascade)
+  type              CommandItemType
+  serviceId         String?
+  service           Service?        @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+  productId         String?
+  product           Product?        @relation(fields: [productId], references: [id], onDelete: Restrict)
+  professionalId    String
+  professional      Professional    @relation(fields: [professionalId], references: [id], onDelete: Restrict)
+  quantity          Int             @default(1)
+  unitPrice         Decimal         @db.Decimal(10, 2)
+  commissionPercent Decimal         @db.Decimal(5, 2)
+  createdAt         DateTime        @default(now())
+
+  @@index([commandId])
+  @@map("command_items")
+}
+
+enum PaymentMethod {
+  DINHEIRO
+  PIX
+  CARTAO_DEBITO
+  CARTAO_CREDITO
+}
+
+model CommandPayment {
+  id        String        @id @default(cuid())
+  commandId String
+  command   Command       @relation(fields: [commandId], references: [id], onDelete: Cascade)
+  method    PaymentMethod
+  amount    Decimal       @db.Decimal(10, 2)
+  createdAt DateTime      @default(now())
+
+  @@index([commandId])
+  @@map("command_payments")
+}
+
+model ProfessionalProduct {
+  id                String       @id @default(cuid())
+  professionalId    String
+  professional      Professional @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  productId         String
+  product           Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+  commissionPercent Decimal      @db.Decimal(5, 2)
+
+  @@unique([professionalId, productId])
+  @@map("professional_products")
+}
+
+enum TransactionType {
+  RECEITA
+  DESPESA
+}
+
+model Transaction {
+  id          String          @id @default(cuid())
+  businessId  String
+  business    Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  type        TransactionType
+  amount      Decimal         @db.Decimal(10, 2)
+  description String
+  commandId   String?
+  payableId   String?
+  occurredAt  DateTime        @default(now())
+
+  @@index([businessId])
+  @@map("transactions")
+}
+
+enum PayableStatus {
+  PENDENTE
+  PAGO
+  VENCIDO
+  CANCELADO
+}
+
+enum PayableKind {
+  COMISSAO
+  FORNECEDOR
+  DESPESA_MANUAL
+  OUTRO
+}
+
+model Payable {
+  id             String        @id @default(cuid())
+  businessId     String
+  business       Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  kind           PayableKind
+  status         PayableStatus @default(PENDENTE)
+  amount         Decimal       @db.Decimal(10, 2)
+  description    String
+  dueDate        DateTime?
+  professionalId String?
+  professional   Professional? @relation(fields: [professionalId], references: [id], onDelete: SetNull)
+  supplierId     String?
+  supplier       Supplier?     @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  commandId      String?
+  paidAt         DateTime?
+  createdAt      DateTime      @default(now())
+
+  @@index([businessId])
+  @@map("payables")
 }

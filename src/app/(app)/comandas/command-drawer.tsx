@@ -124,12 +124,36 @@ export function CommandDrawer({
               ))}
             </div>
           )}
-          <div className="flex items-center justify-between px-1">
-            <span className="text-body-sm font-medium text-foreground">Total</span>
-            <span className="text-body-sm font-medium text-foreground">
-              {formatDecimalToBRL(detail.itemsTotal)}
-            </span>
-          </div>
+          {detail.discountAmount > 0 ? (
+            <>
+              <div className="flex items-center justify-between px-1">
+                <span className="text-body-sm text-foreground-secondary">
+                  Desconto
+                  {detail.discountType === "PERCENTUAL" && detail.discountValue != null
+                    ? ` (${detail.discountValue}%)`
+                    : ""}
+                </span>
+                <span className="text-body-sm text-foreground-secondary">
+                  − {formatDecimalToBRL(detail.discountAmount)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between px-1">
+                <span className="text-body-sm font-medium text-foreground">
+                  Total com desconto
+                </span>
+                <span className="text-body-sm font-medium text-foreground">
+                  {formatDecimalToBRL(detail.itemsTotal - detail.discountAmount)}
+                </span>
+              </div>
+            </>
+          ) : (
+            <div className="flex items-center justify-between px-1">
+              <span className="text-body-sm font-medium text-foreground">Total</span>
+              <span className="text-body-sm font-medium text-foreground">
+                {formatDecimalToBRL(detail.itemsTotal)}
+              </span>
+            </div>
+          )}
         </div>
 
         {detail.status === "ABERTA" ? (
@@ -149,6 +173,7 @@ export function CommandDrawer({
             itemsTotal={detail.itemsTotal}
             canClose={detail.canClose}
             closeBlockedReason={detail.closeBlockedReason}
+            canApplyDiscount={detail.canApplyDiscount}
             onClosed={handleClosed}
           />
         ) : (

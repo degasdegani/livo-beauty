@@ -5,6 +5,7 @@ import { redirect } from "next/navigation"
 
 import { prisma } from "@/lib/prisma"
 import { canAccessProducts, canViewCostPrice, requireSessionUser } from "@/lib/access"
+import { applyStockDelta } from "@/lib/stock"
 import type { ProductSaleType } from "@/generated/prisma/client"
 
 const VALID_SALE_TYPES: ProductSaleType[] = ["VENDA", "CONSUMO_INTERNO", "AMBOS"]
@@ -132,18 +133,13 @@ export async function adjustStock(productId: string, formData: FormData) {
 
   const product = await prisma.product.findFirst({
     where: { id: productId, businessId },
-    select: { currentStock: true },
+    select: { id: true },
   })
   if (!product) {
     throw new Error("Produto não encontrado.")
   }
 
-  const nextStock = Math.max(0, Math.trunc(product.currentStock + delta))
-
-  await prisma.product.update({
-    where: { id: productId },
-    data: { currentStock: nextStock },
-  })
+  await applyStockDelta(prisma, productId, delta)
 
   revalidatePath("/produtos")
   revalidatePath(`/produtos/${productId}/editar`)

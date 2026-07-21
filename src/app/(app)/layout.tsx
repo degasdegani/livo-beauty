@@ -50,6 +50,12 @@ export default async function AppLayout({
             >
               Serviços
             </Link>
+            <Link
+              href="/comandas"
+              className="text-body-sm text-foreground-secondary transition-colors hover:text-foreground"
+            >
+              Comandas
+            </Link>
             {canAccessProducts(role) ? (
               <>
                 <Link

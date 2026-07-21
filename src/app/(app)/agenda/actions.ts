@@ -4,10 +4,12 @@ import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 
 import { prisma } from "@/lib/prisma"
-import { requireBusinessId } from "@/lib/session"
+import { requireBusinessId, requireProfessionalId } from "@/lib/session"
 import {
+  canOpenCommand,
   getAppointmentsVisibleToUser,
   getClientsVisibleToUser,
+  requireSessionUser,
 } from "@/lib/access"
 import {
   combineSaoPauloDateAndMinutes,
@@ -28,6 +30,7 @@ export type AppointmentFormState = {
 }
 
 const CLOSED_STATUSES: AppointmentStatus[] = ["CANCELADO", "CONCLUIDO"]
+const COMMAND_CANCELING_STATUSES: AppointmentStatus[] = ["AUSENTE", "CANCELADO"]
 const MIN_APPOINTMENT_DURATION_MS = 15 * 60_000
 
 const VALID_STATUSES: AppointmentStatus[] = [
@@ -329,6 +332,14 @@ export async function updateAppointment(
   return {}
 }
 
+/** Se o agendamento tiver uma Command ABERTA vinculada, cancela ela — sem gerar Transaction/Payable. */
+async function cancelOpenCommandForAppointment(appointmentId: string) {
+  await prisma.command.updateMany({
+    where: { appointmentId, status: "ABERTA" },
+    data: { status: "CANCELADA" },
+  })
+}
+
 export async function cancelAppointment(id: string) {
   const businessId = await requireBusinessId()
 
@@ -336,6 +347,8 @@ export async function cancelAppointment(id: string) {
     where: { id, businessId },
     data: { status: "CANCELADO" },
   })
+
+  await cancelOpenCommandForAppointment(id)
 
   revalidatePath("/agenda")
 }
@@ -365,6 +378,10 @@ export async function changeAppointmentStatus(
 
   if (result.count === 0) {
     return { error: "Agendamento não encontrado." }
+  }
+
+  if (COMMAND_CANCELING_STATUSES.includes(status)) {
+    await cancelOpenCommandForAppointment(id)
   }
 
   revalidatePath("/agenda")
@@ -457,6 +474,8 @@ export type AppointmentEditDataResult =
         notes: string
         status: AppointmentStatus
         whatsapp: WhatsappActionUrls
+        hasCommand: boolean
+        canOpenCommand: boolean
       }
     }
 
@@ -464,6 +483,10 @@ export type AppointmentEditDataResult =
 export async function getAppointmentEditData(
   id: string
 ): Promise<AppointmentEditDataResult> {
+  const { role } = await requireSessionUser()
+  const userProfessionalId =
+    role === "PROFESSIONAL" ? await requireProfessionalId() : null
+
   const appointment = await prisma.appointment.findFirst({
     where: { id, ...(await getAppointmentsVisibleToUser()) },
     include: {
@@ -471,6 +494,7 @@ export async function getAppointmentEditData(
       professional: true,
       business: true,
       services: { include: { service: true } },
+      command: { select: { id: true } },
     },
   })
   if (!appointment) return { error: "Agendamento não encontrado." }
@@ -497,6 +521,12 @@ export async function getAppointmentEditData(
       room: appointment.room ?? "",
       notes: appointment.notes ?? "",
       status: appointment.status,
+      hasCommand: appointment.command != null,
+      canOpenCommand: canOpenCommand(
+        role,
+        appointment.professionalId,
+        userProfessionalId
+      ),
       whatsapp: {
         confirmationUrl: buildWhatsappUrl(
           appointment.client.phone,

@@ -111,3 +111,8 @@ export function canOpenCommand(
   }
   return false
 }
+
+/** So OWNER/STAFF podem aplicar desconto — independente de hasReception, diferente de canCloseCommand. */
+export function canApplyDiscount(role: UserRole): boolean {
+  return role === "OWNER" || role === "STAFF"
+}

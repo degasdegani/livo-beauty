@@ -1,7 +1,7 @@
 import type { ReactNode } from "react"
 import Link from "next/link"
 
-import { requireBusinessId } from "@/lib/session"
+import { canAccessProducts, requireSessionUser } from "@/lib/access"
 import { ServiceWorkerRegistration } from "@/components/pwa/service-worker-registration"
 
 export default async function AppLayout({
@@ -9,7 +9,7 @@ export default async function AppLayout({
 }: {
   children: ReactNode
 }) {
-  await requireBusinessId()
+  const { role } = await requireSessionUser()
 
   return (
     <div className="flex min-h-full flex-col">
@@ -50,6 +50,22 @@ export default async function AppLayout({
             >
               Serviços
             </Link>
+            {canAccessProducts(role) ? (
+              <>
+                <Link
+                  href="/produtos"
+                  className="text-body-sm text-foreground-secondary transition-colors hover:text-foreground"
+                >
+                  Produtos
+                </Link>
+                <Link
+                  href="/fornecedores"
+                  className="text-body-sm text-foreground-secondary transition-colors hover:text-foreground"
+                >
+                  Fornecedores
+                </Link>
+              </>
+            ) : null}
             <Link
               href="/configuracoes"
               className="text-body-sm text-foreground-secondary transition-colors hover:text-foreground"

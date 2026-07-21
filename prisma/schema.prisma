@@ -27,6 +27,8 @@ model Business {
   clients       Client[]
   businessHours BusinessHours[]
   appointments  Appointment[]
+  products      Product[]
+  suppliers     Supplier[]
 
   @@map("businesses")
 }
@@ -285,4 +287,66 @@ model PushSubscription {
 
   @@index([professionalId])
   @@map("push_subscriptions")
+}
+
+// ---------- PRODUTOS / ESTOQUE ----------
+
+enum ProductSaleType {
+  VENDA
+  CONSUMO_INTERNO
+  AMBOS
+}
+
+model Product {
+  id                String            @id @default(cuid())
+  businessId        String
+  business          Business          @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  name              String
+  sku               String?
+  unit              String
+  saleType          ProductSaleType   @default(VENDA)
+  salePrice         Decimal?          @db.Decimal(10, 2)
+  currentStock      Int               @default(0)
+  lowStockThreshold Int               @default(5)
+  active            Boolean           @default(true)
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  suppliers         ProductSupplier[]
+
+  @@index([businessId])
+  @@map("products")
+}
+
+model Supplier {
+  id          String            @id @default(cuid())
+  businessId  String
+  business    Business          @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  name        String
+  phone       String?
+  contactName String?
+  notes       String?
+  active      Boolean           @default(true)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  products    ProductSupplier[]
+
+  @@index([businessId])
+  @@map("suppliers")
+}
+
+model ProductSupplier {
+  id         String   @id @default(cuid())
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  supplierId String
+  supplier   Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  costPrice  Decimal  @db.Decimal(10, 2)
+  isPrimary  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([productId, supplierId])
+  @@index([productId])
+  @@index([supplierId])
+  @@map("product_suppliers")
 }

@@ -59,3 +59,55 @@ export function canAccessProducts(role: UserRole): boolean {
 export function canViewCostPrice(role: UserRole): boolean {
   return role === "OWNER"
 }
+
+/**
+ * OWNER/STAFF acessam qualquer comanda. PROFESSIONAL so acessa comandas onde
+ * ela esta entre os profissionais envolvidos (professionalIdsInvolved).
+ */
+export function canAccessCommand(
+  role: UserRole,
+  command: { professionalIdsInvolved: string[] },
+  userProfessionalId: string | null,
+): boolean {
+  if (role === "OWNER" || role === "STAFF") return true
+  if (role === "PROFESSIONAL") {
+    return userProfessionalId != null && command.professionalIdsInvolved.includes(userProfessionalId)
+  }
+  return false
+}
+
+/** OWNER/STAFF podem atribuir um item a qualquer profissional. PROFESSIONAL so a si mesma. */
+export function canAssignItemToOtherProfessional(role: UserRole): boolean {
+  return role === "OWNER" || role === "STAFF"
+}
+
+/**
+ * OWNER/STAFF sempre podem fechar a comanda. PROFESSIONAL so pode fechar
+ * quando o negocio nao tem recepcao (hasReception false) e a comanda e dela.
+ */
+export function canCloseCommand(
+  role: UserRole,
+  business: { hasReception: boolean },
+  isOwnCommand: boolean,
+): boolean {
+  if (role === "OWNER" || role === "STAFF") return true
+  if (role === "PROFESSIONAL") return !business.hasReception && isOwnCommand
+  return false
+}
+
+/**
+ * OWNER/STAFF podem abrir a comanda de qualquer agendamento. PROFESSIONAL so
+ * pode abrir a comanda do proprio agendamento (mesma regra de "e dela" usada
+ * em isOwnCommand no fechamento).
+ */
+export function canOpenCommand(
+  role: UserRole,
+  appointmentProfessionalId: string,
+  userProfessionalId: string | null,
+): boolean {
+  if (role === "OWNER" || role === "STAFF") return true
+  if (role === "PROFESSIONAL") {
+    return userProfessionalId != null && userProfessionalId === appointmentProfessionalId
+  }
+  return false
+}

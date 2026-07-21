@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache"
 import { prisma } from "@/lib/prisma"
 import {
   canAccessCommand,
+  canApplyDiscount,
   canAssignItemToOtherProfessional,
   canCloseCommand,
   canOpenCommand,
@@ -14,16 +15,20 @@ import { requireProfessionalId } from "@/lib/session"
 import { applyStockDelta } from "@/lib/stock"
 import { openCommandForAppointment } from "@/lib/commands"
 import { formatDateBR } from "@/lib/datetime"
-import type { CommandStatus, PaymentMethod } from "@/generated/prisma/client"
+import type { CommandStatus, DiscountType, PaymentMethod } from "@/generated/prisma/client"
 
 export type ClosePaymentInput = { method: PaymentMethod; amount: number }
+export type CloseCommandDiscountInput =
+  | { type: "PERCENTUAL" | "FIXO"; value: number }
+  | null
 export type CloseCommandResult = { error?: string }
 
 const AMOUNT_TOLERANCE = 0.01
 
 export async function closeCommand(
   commandId: string,
-  payments: ClosePaymentInput[]
+  payments: ClosePaymentInput[],
+  discount: CloseCommandDiscountInput
 ): Promise<CloseCommandResult> {
   const { businessId, role } = await requireSessionUser()
   const userProfessionalId =
@@ -60,16 +65,35 @@ export async function closeCommand(
     (sum, item) => sum + item.unitPrice.toNumber() * item.quantity,
     0
   )
+
+  let discountAmount = 0
+  if (discount) {
+    if (!canApplyDiscount(role)) {
+      return { error: "Você não tem permissão para aplicar desconto." }
+    }
+    const rawDiscount =
+      discount.type === "PERCENTUAL"
+        ? itemsTotal * (discount.value / 100)
+        : discount.value
+    discountAmount = Math.min(Math.max(rawDiscount, 0), itemsTotal)
+  }
+
+  const netTotal = itemsTotal - discountAmount
   const paymentsTotal = payments.reduce((sum, payment) => sum + payment.amount, 0)
 
-  if (Math.abs(itemsTotal - paymentsTotal) > AMOUNT_TOLERANCE) {
+  if (Math.abs(netTotal - paymentsTotal) > AMOUNT_TOLERANCE) {
     return { error: "A soma dos pagamentos não bate com o total da comanda." }
   }
 
+  // Desconto reduz proporcionalmente a base de comissao de todo mundo — nao
+  // so de um item especifico — senao daria pra "esconder" desconto na
+  // comissao de uma profissional so.
+  const discountFactor = itemsTotal > 0 ? netTotal / itemsTotal : 1
+
   const commissionByProfessional = new Map<string, number>()
   for (const item of command.items) {
-    const itemCommission =
-      item.unitPrice.toNumber() * item.quantity * (item.commissionPercent.toNumber() / 100)
+    const itemBase = item.unitPrice.toNumber() * item.quantity * discountFactor
+    const itemCommission = itemBase * (item.commissionPercent.toNumber() / 100)
     commissionByProfessional.set(
       item.professionalId,
       (commissionByProfessional.get(item.professionalId) ?? 0) + itemCommission
@@ -113,7 +137,7 @@ export async function closeCommand(
       data: {
         businessId,
         type: "RECEITA",
-        amount: itemsTotal,
+        amount: netTotal,
         description: `Comanda — ${referenceLabel}`,
         commandId,
       },
@@ -121,7 +145,13 @@ export async function closeCommand(
 
     await tx.command.update({
       where: { id: commandId },
-      data: { status: "FECHADA", closedAt: new Date() },
+      data: {
+        status: "FECHADA",
+        closedAt: new Date(),
+        discountType: discount ? discount.type : null,
+        discountValue: discount ? discount.value : null,
+        discountAmount,
+      },
     })
   })
 
@@ -158,6 +188,10 @@ export type CommandDetail = {
   canClose: boolean
   closeBlockedReason: string | null
   canAssignOtherProfessional: boolean
+  canApplyDiscount: boolean
+  discountType: DiscountType | null
+  discountValue: number | null
+  discountAmount: number
   services: { id: string; name: string; price: number }[]
   products: { id: string; name: string; salePrice: number }[]
   professionals: { id: string; name: string }[]
@@ -269,6 +303,10 @@ export async function getCommandDetail(commandId: string): Promise<CommandDetail
           ? "Apenas a recepção (OWNER/STAFF) pode fechar esta comanda."
           : "Apenas a profissional responsável por este atendimento pode fechar esta comanda.",
       canAssignOtherProfessional,
+      canApplyDiscount: canApplyDiscount(role),
+      discountType: command.discountType,
+      discountValue: command.discountValue?.toNumber() ?? null,
+      discountAmount: command.discountAmount.toNumber(),
       services: services.map((service) => ({
         id: service.id,
         name: service.name,

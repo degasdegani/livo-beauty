@@ -50,7 +50,11 @@ export default async function AgendaPage({
             startAt: { lt: end },
             endAt: { gt: start },
           },
-          include: { client: true, services: { include: { service: true } } },
+          include: {
+            client: true,
+            services: { include: { service: true } },
+            command: { include: { items: true } },
+          },
           orderBy: { startAt: "asc" },
         })
       : Promise.resolve([]),
@@ -71,6 +75,17 @@ export default async function AgendaPage({
       const rawEnd = (appointment.endAt.getTime() - start.getTime()) / 60_000
       const { startMinutes, durationMinutes } = clampToWindow(rawStart, rawEnd)
 
+      const openCommand =
+        appointment.command && appointment.command.status === "ABERTA"
+          ? {
+              id: appointment.command.id,
+              total: appointment.command.items.reduce(
+                (sum, item) => sum + item.unitPrice.toNumber() * item.quantity,
+                0
+              ),
+            }
+          : null
+
       return {
         id: appointment.id,
         professionalId: appointment.professionalId,
@@ -82,6 +97,7 @@ export default async function AgendaPage({
         room: appointment.room,
         startMinutes,
         durationMinutes,
+        openCommand,
       }
     })
     // Fora da janela fixa 06:00-24:00 (ex: agendamento cruzando a madrugada)

@@ -10,6 +10,7 @@ import {
 } from "./appointment-form"
 import { AppointmentStatusActions } from "./appointment-status-actions"
 import { AppointmentWhatsappActions } from "./appointment-whatsapp-actions"
+import { OpenCommandButton } from "./open-command-button"
 import {
   createAppointment,
   updateAppointment,
@@ -26,6 +27,8 @@ export type AppointmentDrawerState =
 type EditFormValues = Partial<AppointmentFormValues> & {
   status: AppointmentStatus
   whatsapp: WhatsappActionUrls
+  hasCommand: boolean
+  canOpenCommand: boolean
 }
 
 export function AppointmentDrawer({
@@ -34,12 +37,14 @@ export function AppointmentDrawer({
   professionals,
   onSaved,
   onStatusChanged,
+  onCommandOpened,
 }: {
   state: AppointmentDrawerState
   onOpenChange: (open: boolean) => void
   professionals: ProfessionalOption[]
   onSaved: () => void
   onStatusChanged: (appointmentId: string, status: AppointmentStatus) => void
+  onCommandOpened: (commandId: string) => void
 }) {
   const appointmentId = state.mode === "edit" ? state.appointmentId : null
 
@@ -73,6 +78,11 @@ export function AppointmentDrawer({
     onStatusChanged(state.appointmentId, status)
   }
 
+  function handleCommandOpened(commandId: string) {
+    onOpenChange(false)
+    onCommandOpened(commandId)
+  }
+
   function renderBody() {
     if (state.mode === "closed") return null
 
@@ -94,6 +104,12 @@ export function AppointmentDrawer({
             currentStatus={editValues.status}
             onChanged={handleStatusChanged}
           />
+          {!editValues.hasCommand && editValues.canOpenCommand ? (
+            <OpenCommandButton
+              appointmentId={state.appointmentId}
+              onOpened={handleCommandOpened}
+            />
+          ) : null}
           <AppointmentWhatsappActions urls={editValues.whatsapp} />
           <AppointmentForm
             key={state.appointmentId}

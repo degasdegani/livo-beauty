@@ -16,9 +16,12 @@ import {
   type DragStartEvent,
 } from "@dnd-kit/core"
 
+import { Receipt } from "lucide-react"
+
 import { Button, LinkButton } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { formatSaoPauloDateLabel, shiftDateString } from "@/lib/datetime"
+import { formatDecimalToBRL } from "@/lib/masks"
 import { STATUS_BLOCK_CLASSES } from "./status"
 import { rescheduleAppointment, resizeAppointment } from "./actions"
 import { AppointmentDrawer, type AppointmentDrawerState } from "./appointment-drawer"
@@ -26,6 +29,7 @@ import {
   ProfessionalBlockDrawer,
   type ProfessionalBlockDrawerState,
 } from "./professional-block-drawer"
+import { CommandDrawer, type CommandDrawerState } from "../comandas/command-drawer"
 import { AGENDA_WINDOW_START_MINUTES, AGENDA_WINDOW_END_MINUTES } from "./constants"
 import type { ProfessionalOption } from "./appointment-form"
 import type { AppointmentStatus } from "@/generated/prisma/client"
@@ -49,6 +53,7 @@ export type AppointmentBlockData = {
   room: string | null
   startMinutes: number
   durationMinutes: number
+  openCommand: { id: string; total: number } | null
 }
 
 export type ProfessionalBlockData = {
@@ -185,11 +190,13 @@ function AppointmentBlockView({
   appointment,
   isDragging,
   onOpen,
+  onOpenCommand,
   onResizeEnd,
 }: {
   appointment: AppointmentBlockData
   isDragging: boolean
   onOpen: (id: string) => void
+  onOpenCommand: (commandId: string) => void
   onResizeEnd: (appointmentId: string, newDurationMinutes: number) => void
 }) {
   const { attributes, listeners, setNodeRef } = useDraggable({
@@ -234,6 +241,23 @@ function AppointmentBlockView({
       <span className="truncate text-micro text-foreground-secondary">
         {appointment.serviceLabel}
       </span>
+      {appointment.openCommand ? (
+        <span
+          role="button"
+          tabIndex={0}
+          onClick={(event) => {
+            event.stopPropagation()
+            onOpenCommand(appointment.openCommand!.id)
+          }}
+          onPointerDown={(event) => event.stopPropagation()}
+          className="mt-0.5 inline-flex max-w-full items-center gap-1 rounded-full bg-primary-light px-1.5 py-0.5 text-micro font-medium text-primary-hover"
+        >
+          <Receipt className="size-3 shrink-0" strokeWidth={1.75} />
+          <span className="truncate">
+            Comanda aberta · {formatDecimalToBRL(appointment.openCommand.total)}
+          </span>
+        </span>
+      ) : null}
 
       <ResizeHandle
         appointmentId={appointment.id}
@@ -309,6 +333,7 @@ function ProfessionalColumn({
   onSlotPointerDown,
   onSlotPointerEnter,
   onOpenAppointment,
+  onOpenCommand,
   onOpenBlock,
   onResizeEnd,
 }: {
@@ -320,6 +345,7 @@ function ProfessionalColumn({
   onSlotPointerDown: (professionalId: string, slotIndex: number) => void
   onSlotPointerEnter: (professionalId: string, slotIndex: number) => void
   onOpenAppointment: (id: string) => void
+  onOpenCommand: (commandId: string) => void
   onOpenBlock: (blockId: string) => void
   onResizeEnd: (appointmentId: string, newDurationMinutes: number) => void
 }) {
@@ -364,6 +390,7 @@ function ProfessionalColumn({
           appointment={appointment}
           isDragging={activeId === appointment.id}
           onOpen={onOpenAppointment}
+          onOpenCommand={onOpenCommand}
           onResizeEnd={onResizeEnd}
         />
       ))}
@@ -398,6 +425,8 @@ export function DayCalendar({
   })
   const [blockDrawerState, setBlockDrawerState] =
     React.useState<ProfessionalBlockDrawerState>({ mode: "closed" })
+  const [commandDrawerState, setCommandDrawerState] =
+    React.useState<CommandDrawerState>({ mode: "closed" })
   const [, startTransition] = React.useTransition()
 
   // Sincroniza com dados vindos do servidor (ex: router.refresh() apos
@@ -422,6 +451,18 @@ export function DayCalendar({
 
   function handleOpenAppointment(id: string) {
     setDrawerState({ mode: "edit", appointmentId: id })
+  }
+
+  function handleOpenCommand(commandId: string) {
+    setCommandDrawerState({ mode: "open", commandId })
+  }
+
+  function handleCommandDrawerOpenChange(open: boolean) {
+    if (!open) setCommandDrawerState({ mode: "closed" })
+  }
+
+  function handleCommandChanged() {
+    router.refresh()
   }
 
   function handleDrawerOpenChange(open: boolean) {
@@ -715,6 +756,7 @@ export function DayCalendar({
                   onSlotPointerDown={handleSlotPointerDown}
                   onSlotPointerEnter={handleSlotPointerEnter}
                   onOpenAppointment={handleOpenAppointment}
+                  onOpenCommand={handleOpenCommand}
                   onOpenBlock={handleOpenBlock}
                   onResizeEnd={handleResizeEnd}
                 />
@@ -738,6 +780,7 @@ export function DayCalendar({
         professionals={professionals}
         onSaved={handleSaved}
         onStatusChanged={handleStatusChanged}
+        onCommandOpened={handleOpenCommand}
       />
 
       <ProfessionalBlockDrawer
@@ -745,6 +788,12 @@ export function DayCalendar({
         onOpenChange={handleBlockDrawerOpenChange}
         professionals={professionals}
         onSaved={handleBlockSaved}
+      />
+
+      <CommandDrawer
+        state={commandDrawerState}
+        onOpenChange={handleCommandDrawerOpenChange}
+        onChanged={handleCommandChanged}
       />
     </div>
   )

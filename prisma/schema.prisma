@@ -56,9 +56,10 @@ model User {
   businessId String
   business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
 
-  accounts     Account[]
-  sessions     Session[]
-  professional Professional?
+  accounts        Account[]
+  sessions        Session[]
+  professional    Professional?
+  payablePayments PayablePayment[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -393,6 +394,7 @@ model Command {
   discountAmount Decimal          @default(0) @db.Decimal(10, 2)
   items          CommandItem[]
   payments       CommandPayment[]
+  payables       Payable[]
 
   @@index([businessId])
   @@map("commands")
@@ -468,14 +470,17 @@ model Transaction {
   description String
   commandId   String?
   payableId   String?
+  payable     Payable?        @relation(fields: [payableId], references: [id], onDelete: SetNull)
   occurredAt  DateTime        @default(now())
 
   @@index([businessId])
+  @@index([payableId])
   @@map("transactions")
 }
 
 enum PayableStatus {
   PENDENTE
+  PARCIAL
   PAGO
   VENCIDO
   CANCELADO
@@ -489,22 +494,41 @@ enum PayableKind {
 }
 
 model Payable {
-  id             String        @id @default(cuid())
+  id             String           @id @default(cuid())
   businessId     String
-  business       Business      @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  business       Business         @relation(fields: [businessId], references: [id], onDelete: Cascade)
   kind           PayableKind
-  status         PayableStatus @default(PENDENTE)
-  amount         Decimal       @db.Decimal(10, 2)
+  status         PayableStatus    @default(PENDENTE)
+  amount         Decimal          @db.Decimal(10, 2)
   description    String
   dueDate        DateTime?
   professionalId String?
-  professional   Professional? @relation(fields: [professionalId], references: [id], onDelete: SetNull)
+  professional   Professional?    @relation(fields: [professionalId], references: [id], onDelete: SetNull)
   supplierId     String?
-  supplier       Supplier?     @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  supplier       Supplier?        @relation(fields: [supplierId], references: [id], onDelete: SetNull)
   commandId      String?
+  command        Command?         @relation(fields: [commandId], references: [id], onDelete: SetNull)
   paidAt         DateTime?
-  createdAt      DateTime      @default(now())
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  transactions   Transaction[]
+  payments       PayablePayment[]
 
   @@index([businessId])
+  @@index([commandId])
   @@map("payables")
+}
+
+model PayablePayment {
+  id              String   @id @default(cuid())
+  payableId       String
+  payable         Payable  @relation(fields: [payableId], references: [id], onDelete: Cascade)
+  amount          Decimal  @db.Decimal(10, 2)
+  paidAt          DateTime @default(now())
+  createdByUserId String
+  createdBy       User     @relation(fields: [createdByUserId], references: [id])
+  createdAt       DateTime @default(now())
+
+  @@index([payableId])
+  @@map("payable_payments")
 }

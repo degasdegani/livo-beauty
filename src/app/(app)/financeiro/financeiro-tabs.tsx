@@ -7,6 +7,7 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 const FINANCEIRO_TABS = [
   { key: "/financeiro/contas-a-pagar", label: "Contas a pagar" },
   { key: "/financeiro/fluxo-de-caixa", label: "Fluxo de caixa" },
+  { key: "/financeiro/relatorios", label: "Relatórios" },
   { key: "/comandas", label: "Comandas" },
 ] as const
 

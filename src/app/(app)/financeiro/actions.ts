@@ -180,6 +180,53 @@ export async function payPayable(
   return {}
 }
 
+export type UpdatePayableResult = { error?: string }
+
+/**
+ * Edita amount/description de uma Payable — so permitido enquanto ela nao
+ * tiver nenhum PayablePayment registrado ainda (independente do status ser
+ * PENDENTE ou VENCIDO; PARCIAL nunca cai aqui, ja que so existe depois do
+ * primeiro pagamento). Depois do primeiro pagamento, edicao fica fora de
+ * escopo. So OWNER (canManagePayables) — mesma regra das outras actions.
+ */
+export async function updatePayable(
+  payableId: string,
+  data: { amount?: number; description?: string }
+): Promise<UpdatePayableResult> {
+  const { businessId, role } = await requireSessionUser()
+  if (!canManagePayables(role)) {
+    throw new Error("Sem permissão para editar contas a pagar.")
+  }
+
+  const payable = await prisma.payable.findFirst({
+    where: { id: payableId, businessId },
+    include: { payments: { select: { id: true } } },
+  })
+  if (!payable) return { error: "Conta a pagar não encontrada." }
+
+  if (payable.payments.length > 0) {
+    return {
+      error: "Não é possível editar uma conta que já tem pagamento registrado.",
+    }
+  }
+
+  if (data.amount !== undefined && data.amount <= 0) {
+    return { error: "Valor deve ser maior que zero." }
+  }
+
+  await prisma.payable.update({
+    where: { id: payableId },
+    data: {
+      ...(data.amount !== undefined ? { amount: data.amount } : {}),
+      ...(data.description !== undefined ? { description: data.description } : {}),
+    },
+  })
+
+  revalidatePath("/financeiro")
+
+  return {}
+}
+
 export type CashFlowResult = {
   totalReceita: number
   totalDespesa: number

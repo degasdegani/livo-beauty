@@ -1,7 +1,7 @@
 import type { ReactNode } from "react"
 import Link from "next/link"
 
-import { canAccessProducts, requireSessionUser } from "@/lib/access"
+import { canAccessProducts, canManagePayables, requireSessionUser } from "@/lib/access"
 import { ServiceWorkerRegistration } from "@/components/pwa/service-worker-registration"
 
 export default async function AppLayout({
@@ -71,6 +71,14 @@ export default async function AppLayout({
                   Fornecedores
                 </Link>
               </>
+            ) : null}
+            {canManagePayables(role) ? (
+              <Link
+                href="/financeiro/contas-a-pagar"
+                className="text-body-sm text-foreground-secondary transition-colors hover:text-foreground"
+              >
+                Financeiro
+              </Link>
             ) : null}
             <Link
               href="/configuracoes"

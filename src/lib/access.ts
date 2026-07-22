@@ -6,14 +6,15 @@ import type { Prisma, UserRole } from "@/generated/prisma/client"
 
 export async function requireSessionUser() {
   const session = await auth()
+  const userId = session?.user?.id
   const businessId = session?.user?.businessId
   const role = session?.user?.role
 
-  if (!businessId || !role) {
+  if (!userId || !businessId || !role) {
     redirect("/login")
   }
 
-  return { businessId, role }
+  return { userId, businessId, role }
 }
 
 /**
@@ -115,4 +116,13 @@ export function canOpenCommand(
 /** So OWNER/STAFF podem aplicar desconto — independente de hasReception, diferente de canCloseCommand. */
 export function canApplyDiscount(role: UserRole): boolean {
   return role === "OWNER" || role === "STAFF"
+}
+
+/**
+ * Contas a pagar (Payable) sao dado financeiro sensivel do negocio — so o
+ * OWNER ve a tela e registra pagamento, mesma regra pros dois casos
+ * (diferente de canApplyDiscount, que inclui STAFF).
+ */
+export function canManagePayables(role: UserRole): boolean {
+  return role === "OWNER"
 }

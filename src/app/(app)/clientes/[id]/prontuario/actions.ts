@@ -12,7 +12,7 @@ import {
 } from "@/lib/access"
 import { requireProfessionalId } from "@/lib/session"
 import { buildAnamneseConsentText } from "@/lib/anamnese-consent"
-import type { AnamneseRecord } from "@/generated/prisma/client"
+import type { AnamneseCustomField, AnamneseRecord } from "@/generated/prisma/client"
 
 /**
  * Resolve acesso ao prontuario de UM cliente: modulo ligado + papel + "e meu
@@ -71,6 +71,17 @@ export async function getAnamneseRecord(
   return prisma.anamneseRecord.findUnique({ where: { clientId } })
 }
 
+export async function getAnamneseCustomFields(
+  clientId: string
+): Promise<AnamneseCustomField[]> {
+  const { businessId } = await resolveAnamneseAccess(clientId)
+
+  return prisma.anamneseCustomField.findMany({
+    where: { businessId },
+    orderBy: { order: "asc" },
+  })
+}
+
 function optionalText(formData: FormData, key: string): string | null {
   const value = String(formData.get(key) ?? "").trim()
   return value || null
@@ -97,6 +108,19 @@ export async function saveAnamneseRecord(clientId: string, formData: FormData) {
     notes: optionalText(formData, "notes"),
   }
 
+  const customFieldDefs = await prisma.anamneseCustomField.findMany({
+    where: { businessId },
+  })
+
+  const customFieldValues: Record<string, string | boolean | null> = {}
+  for (const field of customFieldDefs) {
+    const key = `custom_${field.id}`
+    customFieldValues[field.id] =
+      field.type === "BOOLEAN"
+        ? formData.get(key) === "on"
+        : optionalText(formData, key)
+  }
+
   const consentText = buildAnamneseConsentText(businessName)
 
   const headerList = await headers()
@@ -112,15 +136,16 @@ export async function saveAnamneseRecord(clientId: string, formData: FormData) {
         clientId,
         createdByUserId: userId,
         ...healthData,
+        customFields: customFieldValues,
       },
-      update: healthData,
+      update: { ...healthData, customFields: customFieldValues },
     })
 
     await tx.anamneseConsent.create({
       data: {
         anamneseRecordId: record.id,
         consentText,
-        dataSnapshot: healthData,
+        dataSnapshot: { ...healthData, customFields: customFieldValues },
         ipAddress,
         userAgent,
         registeredByUserId: userId,

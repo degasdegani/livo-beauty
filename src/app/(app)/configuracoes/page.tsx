@@ -7,6 +7,8 @@ import {
 } from "@/components/ui/card"
 import { PushNotificationToggle } from "@/components/pwa/push-notification-toggle"
 import { ProntuarioToggle } from "./prontuario-toggle"
+import { AnamneseCustomFields } from "./anamnese-custom-fields"
+import { listAnamneseCustomFields } from "./anamnese-fields-actions"
 import { canManageAnamneseSettings, requireSessionUser } from "@/lib/access"
 import { prisma } from "@/lib/prisma"
 
@@ -20,6 +22,10 @@ export default async function ConfiguracoesPage() {
         select: { prontuarioEnabled: true },
       })
     : null
+
+  const customFields = business?.prontuarioEnabled
+    ? await listAnamneseCustomFields()
+    : []
 
   return (
     <div className="flex flex-col gap-8">
@@ -51,8 +57,11 @@ export default async function ConfiguracoesPage() {
               clientes.
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="flex flex-col gap-4">
             <ProntuarioToggle initialEnabled={business.prontuarioEnabled} />
+            {business.prontuarioEnabled ? (
+              <AnamneseCustomFields fields={customFields} />
+            ) : null}
           </CardContent>
         </Card>
       ) : null}

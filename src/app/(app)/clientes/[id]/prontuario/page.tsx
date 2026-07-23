@@ -4,7 +4,11 @@ import { prisma } from "@/lib/prisma"
 import { getClientsVisibleToUser, requireSessionUser } from "@/lib/access"
 import { buildAnamneseConsentText } from "@/lib/anamnese-consent"
 import { formatDateTimeBR } from "@/lib/datetime"
-import { getAnamneseRecord, saveAnamneseRecord } from "./actions"
+import {
+  getAnamneseCustomFields,
+  getAnamneseRecord,
+  saveAnamneseRecord,
+} from "./actions"
 import { uploadAnamnesePhoto } from "./photo-actions"
 import { ConsentFooter } from "./consent-footer"
 import { PhotosGrid } from "./photos-grid"
@@ -64,11 +68,18 @@ export default async function ProntuarioPage({
   }
 
   let record
+  let customFields
   try {
     record = await getAnamneseRecord(id)
+    customFields = await getAnamneseCustomFields(id)
   } catch {
     notFound()
   }
+
+  const customFieldValues = (record?.customFields ?? {}) as Record<
+    string,
+    string | boolean | null
+  >
 
   const business = await prisma.business.findUniqueOrThrow({
     where: { id: businessId },
@@ -204,6 +215,47 @@ export default async function ProntuarioPage({
                 defaultValue={record?.notes ?? ""}
               />
             </div>
+
+            {customFields.map((field) => {
+              const inputName = `custom_${field.id}`
+              const value = customFieldValues[field.id]
+
+              if (field.type === "BOOLEAN") {
+                return (
+                  <div key={field.id} className="flex items-start gap-2">
+                    <input
+                      id={inputName}
+                      name={inputName}
+                      type="checkbox"
+                      defaultChecked={Boolean(value)}
+                      className="mt-0.5 h-4 w-4 rounded border-input accent-primary"
+                    />
+                    <label
+                      htmlFor={inputName}
+                      className="text-body-sm font-medium text-foreground"
+                    >
+                      {field.label}
+                    </label>
+                  </div>
+                )
+              }
+
+              return (
+                <div key={field.id} className="flex flex-col gap-1.5">
+                  <label
+                    htmlFor={inputName}
+                    className="text-body-sm font-medium text-foreground"
+                  >
+                    {field.label}
+                  </label>
+                  <Textarea
+                    id={inputName}
+                    name={inputName}
+                    defaultValue={typeof value === "string" ? value : ""}
+                  />
+                </div>
+              )
+            })}
           </CardContent>
         </Card>
 

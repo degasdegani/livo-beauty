@@ -1,0 +1,1 @@
+export const MAX_ANAMNESE_CUSTOM_FIELDS = 5

@@ -20,7 +20,7 @@ import type { AnamneseRecord } from "@/generated/prisma/client"
  * deixa ler nem escrever dado de um modulo desligado, mesmo que a ficha ja
  * exista de antes.
  */
-async function resolveAnamneseAccess(clientId: string) {
+export async function resolveAnamneseAccess(clientId: string) {
   const { businessId, userId, role } = await requireSessionUser()
 
   const business = await prisma.business.findUniqueOrThrow({

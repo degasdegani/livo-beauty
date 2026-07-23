@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation"
 
 import { prisma } from "@/lib/prisma"
-import { requireBusinessId } from "@/lib/session"
+import { canManageAnamneseSettings, requireSessionUser } from "@/lib/access"
 import { updateService } from "../../actions"
 import { Button, LinkButton } from "@/components/ui/button"
 import {
@@ -21,7 +21,7 @@ export default async function EditarServicoPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
-  const businessId = await requireBusinessId()
+  const { businessId, role } = await requireSessionUser()
 
   const service = await prisma.service.findFirst({
     where: { id, businessId },
@@ -30,6 +30,15 @@ export default async function EditarServicoPage({
   if (!service) {
     notFound()
   }
+
+  const business = canManageAnamneseSettings(role)
+    ? await prisma.business.findUnique({
+        where: { id: businessId },
+        select: { prontuarioEnabled: true },
+      })
+    : null
+
+  const showRequiresAnamnese = Boolean(business?.prontuarioEnabled)
 
   const updateServiceWithId = updateService.bind(null, service.id)
 
@@ -118,6 +127,30 @@ export default async function EditarServicoPage({
                 />
               </div>
             </div>
+
+            {showRequiresAnamnese ? (
+              <div className="flex items-start gap-2">
+                <input
+                  id="requiresAnamnese"
+                  name="requiresAnamnese"
+                  type="checkbox"
+                  defaultChecked={service.requiresAnamnese}
+                  className="mt-0.5 h-4 w-4 rounded border-input accent-primary"
+                />
+                <div className="flex flex-col gap-0.5">
+                  <label
+                    htmlFor="requiresAnamnese"
+                    className="text-body-sm font-medium text-foreground"
+                  >
+                    Exige anamnese
+                  </label>
+                  <p className="text-micro text-muted-foreground">
+                    Clientes precisarão ter uma ficha de anamnese preenchida
+                    antes de agendar este serviço.
+                  </p>
+                </div>
+              </div>
+            ) : null}
           </CardContent>
           <CardFooter className="justify-end gap-3">
             <LinkButton href="/servicos" variant="outline">

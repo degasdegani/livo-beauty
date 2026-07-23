@@ -7,6 +7,7 @@ import { formatDateTimeBR } from "@/lib/datetime"
 import { getAnamneseRecord, saveAnamneseRecord } from "./actions"
 import { uploadAnamnesePhoto } from "./photo-actions"
 import { ConsentFooter } from "./consent-footer"
+import { PhotosGrid } from "./photos-grid"
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
@@ -309,27 +310,12 @@ export default async function ProntuarioPage({
             </p>
           )}
 
-          {photos.length === 0 ? (
-            <p className="text-body-sm text-foreground-secondary">
-              Nenhuma foto registrada ainda.
-            </p>
-          ) : (
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
-              {photos.map((photo) => (
-                <div key={photo.id} className="flex flex-col gap-1.5">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={`/api/anamnese-photos/${photo.id}`}
-                    alt=""
-                    className="aspect-square w-full rounded-lg border border-border object-cover"
-                  />
-                  <p className="text-micro text-foreground-secondary">
-                    {photoCaption(photo)}
-                  </p>
-                </div>
-              ))}
-            </div>
-          )}
+          <PhotosGrid
+            photos={photos.map((photo) => ({
+              id: photo.id,
+              caption: photoCaption(photo),
+            }))}
+          />
         </CardContent>
       </Card>
     </div>

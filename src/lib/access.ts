@@ -157,6 +157,21 @@ export async function getAnamneseClientFilterForUser(): Promise<Prisma.AnamneseR
 }
 
 /**
+ * Checagem pontual de "posso acessar o prontuario DESTE cliente" — diferente
+ * de getAnamneseClientFilterForUser, que e para listar/filtrar. O chamador
+ * calcula isOwnClient (prisma.appointment.count > 0), mesmo padrao de
+ * canCloseCommand/canOpenCommand: funcao pura, sem query dentro dela.
+ */
+export function canAccessClientAnamnese(
+  role: UserRole,
+  isOwnClient: boolean,
+): boolean {
+  if (role === "OWNER") return true
+  if (role === "PROFESSIONAL") return isOwnClient
+  return false
+}
+
+/**
  * Ligar/desligar o modulo (Business.prontuarioEnabled) e marcar
  * Service.requiresAnamnese sao decisao de configuracao de negocio com
  * implicacao de LGPD (habilita captura de dado de saude) — so o OWNER mexe,

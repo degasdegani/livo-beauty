@@ -1,9 +1,13 @@
 import { notFound } from "next/navigation"
 
 import { prisma } from "@/lib/prisma"
-import { requireBusinessId } from "@/lib/session"
-import { getClientsVisibleToUser } from "@/lib/access"
-import { toDateInputValue } from "@/lib/datetime"
+import { requireProfessionalId } from "@/lib/session"
+import {
+  canAccessAnamnese,
+  getClientsVisibleToUser,
+  requireSessionUser,
+} from "@/lib/access"
+import { formatDateBR, toDateInputValue } from "@/lib/datetime"
 import { updateClient } from "../../actions"
 import { Button, LinkButton } from "@/components/ui/button"
 import {
@@ -17,14 +21,17 @@ import {
 import { Input } from "@/components/ui/input"
 import { MaskedInput } from "@/components/ui/masked-input"
 import { formatMaskValue } from "@/lib/masks"
+import { ProntuarioSavedToast } from "./prontuario-saved-toast"
 
 export default async function EditarClientePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>
+  searchParams: Promise<{ prontuario?: string }>
 }) {
   const { id } = await params
-  await requireBusinessId()
+  const { businessId, role } = await requireSessionUser()
 
   const client = await prisma.client.findFirst({
     where: { id, ...(await getClientsVisibleToUser()) },
@@ -33,6 +40,33 @@ export default async function EditarClientePage({
   if (!client) {
     notFound()
   }
+
+  let showAnamneseCard = false
+  if (canAccessAnamnese(role)) {
+    const business = await prisma.business.findUnique({
+      where: { id: businessId },
+      select: { prontuarioEnabled: true },
+    })
+
+    if (business?.prontuarioEnabled) {
+      if (role === "OWNER") {
+        showAnamneseCard = true
+      } else if (role === "PROFESSIONAL") {
+        const professionalId = await requireProfessionalId()
+        const appointmentCount = await prisma.appointment.count({
+          where: { clientId: client.id, professionalId },
+        })
+        showAnamneseCard = appointmentCount > 0
+      }
+    }
+  }
+
+  const anamneseRecord = showAnamneseCard
+    ? await prisma.anamneseRecord.findUnique({
+        where: { clientId: client.id },
+        select: { updatedAt: true },
+      })
+    : null
 
   const updateClientWithId = updateClient.bind(null, client.id)
 
@@ -263,6 +297,25 @@ export default async function EditarClientePage({
           </CardFooter>
         </Card>
       </form>
+
+      {showAnamneseCard ? (
+        <Card className="max-w-lg">
+          <ProntuarioSavedToast />
+          <CardHeader>
+            <CardTitle>Prontuário/Anamnese</CardTitle>
+            <CardDescription>
+              {anamneseRecord
+                ? `Ficha atualizada em ${formatDateBR(anamneseRecord.updatedAt)}.`
+                : "Nenhuma ficha de anamnese registrada ainda."}
+            </CardDescription>
+          </CardHeader>
+          <CardFooter className="justify-end">
+            <LinkButton href={`/clientes/${client.id}/prontuario`} variant="outline">
+              {anamneseRecord ? "Ver/editar ficha" : "Preencher ficha"}
+            </LinkButton>
+          </CardFooter>
+        </Card>
+      ) : null}
     </div>
   )
 }

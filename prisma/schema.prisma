@@ -34,6 +34,10 @@ model Business {
   transactions  Transaction[]
   payables      Payable[]
 
+  anamneseRecords       AnamneseRecord[]
+  anamneseCustomFields  AnamneseCustomField[]
+  anamnesePhotos        AnamnesePhoto[]
+
   @@map("businesses")
 }
 
@@ -153,6 +157,7 @@ model Service {
   durationMinutes     Int
   price               Decimal               @db.Decimal(10, 2)
   active              Boolean               @default(true)
+  requiresAnamnese    Boolean               @default(false)
   professionals       ProfessionalService[]
   appointmentServices AppointmentService[]
   commandItems        CommandItem[]
@@ -199,10 +204,12 @@ model Client {
   addressState        String?
   addressZipCode      String?
 
-  appointments Appointment[]
-  commands     Command[]
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  appointments   Appointment[]
+  commands       Command[]
+  anamneseRecord AnamneseRecord?
+  anamnesePhotos AnamnesePhoto[]
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
 
   @@index([businessId])
   @@map("clients")
@@ -257,6 +264,7 @@ model Appointment {
   notes              String?
   services           AppointmentService[]
   command            Command?
+  anamnesePhotos     AnamnesePhoto[]
   pushReminderSentAt DateTime?
   createdAt          DateTime             @default(now())
   updatedAt          DateTime             @updatedAt
@@ -531,4 +539,107 @@ model PayablePayment {
 
   @@index([payableId])
   @@map("payable_payments")
+}
+
+// ---------- PRONTUARIO / ANAMNESE ----------
+// Modulo ligado por Business.prontuarioEnabled. Ver CLAUDE.md item 9 do MVP:
+// STAFF nao acessa dado clinico (decisao de produto), so OWNER/PROFESSIONAL.
+
+model AnamneseRecord {
+  id                 String   @id @default(cuid())
+  businessId         String
+  clientId           String   @unique
+  allergies          String?  @db.Text
+  medications        String?  @db.Text
+  healthConditions   String?  @db.Text
+  previousProcedures String?  @db.Text
+  contraindications  String?  @db.Text
+  notes              String?  @db.Text
+  customFields       Json?
+  createdByUserId    String
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  business Business          @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  client   Client            @relation(fields: [clientId], references: [id])
+  consents AnamneseConsent[]
+  photos   AnamnesePhoto[]
+
+  @@index([businessId])
+  @@map("anamnese_records")
+}
+
+model AnamneseConsent {
+  id                 String   @id @default(cuid())
+  anamneseRecordId   String
+  consentText        String   @db.Text
+  dataSnapshot       Json
+  ipAddress          String?
+  userAgent          String?
+  registeredByUserId String
+  createdAt          DateTime @default(now())
+
+  record AnamneseRecord @relation(fields: [anamneseRecordId], references: [id])
+
+  @@index([anamneseRecordId])
+  @@map("anamnese_consents")
+}
+
+model AnamneseCustomField {
+  id         String            @id @default(cuid())
+  businessId String
+  label      String
+  type       AnamneseFieldType
+  order      Int
+  createdAt  DateTime          @default(now())
+
+  business Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@index([businessId])
+  @@map("anamnese_custom_fields")
+}
+
+enum AnamneseFieldType {
+  TEXT
+  BOOLEAN
+}
+
+model AnamnesePhoto {
+  id               String            @id @default(cuid())
+  businessId       String
+  clientId         String
+  anamneseRecordId String?
+  appointmentId    String?
+  kind             AnamnesePhotoKind
+  blobPathname     String
+  uploadedByUserId String
+  takenAt          DateTime          @default(now())
+
+  business    Business        @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  client      Client          @relation(fields: [clientId], references: [id])
+  record      AnamneseRecord? @relation(fields: [anamneseRecordId], references: [id])
+  appointment Appointment?    @relation(fields: [appointmentId], references: [id])
+
+  @@index([businessId])
+  @@index([clientId])
+  @@index([appointmentId])
+  @@map("anamnese_photos")
+}
+
+enum AnamnesePhotoKind {
+  ANTES
+  DEPOIS
+  GERAL
+}
+
+model AnamneseAccessLog {
+  id         String   @id @default(cuid())
+  businessId String
+  clientId   String
+  photoId    String
+  userId     String
+  createdAt  DateTime @default(now())
+
+  @@index([clientId])
+  @@map("anamnese_access_logs")
 }

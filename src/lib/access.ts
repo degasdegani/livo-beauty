@@ -126,3 +126,32 @@ export function canApplyDiscount(role: UserRole): boolean {
 export function canManagePayables(role: UserRole): boolean {
   return role === "OWNER"
 }
+
+/**
+ * Prontuario/Anamnese e dado sensivel de saude (LGPD) — STAFF nao acessa
+ * conteudo clinico, decisao de produto ja fechada, nao e omissao.
+ */
+export function canAccessAnamnese(role: UserRole): boolean {
+  return role === "OWNER" || role === "PROFESSIONAL"
+}
+
+/**
+ * OWNER ve o prontuario de qualquer cliente do negocio. PROFESSIONAL so ve o
+ * de clientes com ao menos um agendamento com ela (mesmo padrao de
+ * getClientsVisibleToUser). STAFF nunca acessa — retorna filtro que nao bate
+ * com nenhum cliente, nunca undefined/sem filtro.
+ */
+export async function getAnamneseClientFilterForUser(): Promise<Prisma.AnamneseRecordWhereInput> {
+  const { businessId, role } = await requireSessionUser()
+
+  if (role === "OWNER") {
+    return { businessId }
+  }
+
+  if (role === "PROFESSIONAL") {
+    const professionalId = await requireProfessionalId()
+    return { businessId, client: { appointments: { some: { professionalId } } } }
+  }
+
+  return { clientId: { in: [] } }
+}

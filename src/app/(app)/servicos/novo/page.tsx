@@ -10,8 +10,21 @@ import {
 } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { CurrencyInput } from "@/components/ui/currency-input"
+import { canManageAnamneseSettings, requireSessionUser } from "@/lib/access"
+import { prisma } from "@/lib/prisma"
 
-export default function NovoServicoPage() {
+export default async function NovoServicoPage() {
+  const { businessId, role } = await requireSessionUser()
+
+  const business = canManageAnamneseSettings(role)
+    ? await prisma.business.findUnique({
+        where: { id: businessId },
+        select: { prontuarioEnabled: true },
+      })
+    : null
+
+  const showRequiresAnamnese = Boolean(business?.prontuarioEnabled)
+
   return (
     <div className="flex flex-col gap-6">
       <div>
@@ -88,6 +101,29 @@ export default function NovoServicoPage() {
                 />
               </div>
             </div>
+
+            {showRequiresAnamnese ? (
+              <div className="flex items-start gap-2">
+                <input
+                  id="requiresAnamnese"
+                  name="requiresAnamnese"
+                  type="checkbox"
+                  className="mt-0.5 h-4 w-4 rounded border-input accent-primary"
+                />
+                <div className="flex flex-col gap-0.5">
+                  <label
+                    htmlFor="requiresAnamnese"
+                    className="text-body-sm font-medium text-foreground"
+                  >
+                    Exige anamnese
+                  </label>
+                  <p className="text-micro text-muted-foreground">
+                    Clientes precisarão ter uma ficha de anamnese preenchida
+                    antes de agendar este serviço.
+                  </p>
+                </div>
+              </div>
+            ) : null}
           </CardContent>
           <CardFooter className="justify-end gap-3">
             <LinkButton href="/servicos" variant="outline">

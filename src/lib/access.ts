@@ -155,3 +155,14 @@ export async function getAnamneseClientFilterForUser(): Promise<Prisma.AnamneseR
 
   return { clientId: { in: [] } }
 }
+
+/**
+ * Ligar/desligar o modulo (Business.prontuarioEnabled) e marcar
+ * Service.requiresAnamnese sao decisao de configuracao de negocio com
+ * implicacao de LGPD (habilita captura de dado de saude) — so o OWNER mexe,
+ * mesma regra de canManagePayables. Diferente de canAccessAnamnese, que e
+ * sobre LER a ficha clinica, nao sobre configurar o modulo.
+ */
+export function canManageAnamneseSettings(role: UserRole): boolean {
+  return role === "OWNER"
+}

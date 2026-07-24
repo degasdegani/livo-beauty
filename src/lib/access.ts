@@ -181,3 +181,24 @@ export function canAccessClientAnamnese(
 export function canManageAnamneseSettings(role: UserRole): boolean {
   return role === "OWNER"
 }
+
+/**
+ * Todo role autenticado acessa alguma versao do dashboard — o conteudo
+ * interno e que varia por role (ver canViewDashboardFinancials). Mantido
+ * como funcao, e nao um acesso irrestrito implicito, pelo mesmo motivo dos
+ * outros gates deste arquivo: nunca pular a checagem, mesmo quando ela hoje
+ * sempre retorna true.
+ */
+export function canAccessDashboard(role: UserRole): boolean {
+  return true
+}
+
+/**
+ * KPIs de receita, grafico e desempenho de profissionais no dashboard sao
+ * dado financeiro sensivel — so o OWNER ve. Separado de canManagePayables
+ * porque e uma tela diferente (resumo do negocio vs. gestao de contas a
+ * pagar), mesmo que hoje as duas regras coincidam.
+ */
+export function canViewDashboardFinancials(role: UserRole): boolean {
+  return role === "OWNER"
+}

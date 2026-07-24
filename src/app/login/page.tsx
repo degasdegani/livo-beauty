@@ -16,7 +16,7 @@ export default function LoginPage() {
       email: String(formData.get("email") ?? ""),
       password: String(formData.get("password") ?? ""),
       redirect: true,
-      callbackUrl: "/profissionais",
+      callbackUrl: "/dashboard",
     })
   }
 

@@ -21,6 +21,12 @@ export default async function AppLayout({
           </span>
           <nav className="flex items-center gap-6">
             <Link
+              href="/dashboard"
+              className="text-body-sm text-foreground-secondary transition-colors hover:text-foreground"
+            >
+              Dashboard
+            </Link>
+            <Link
               href="/agenda"
               className="text-body-sm text-foreground-secondary transition-colors hover:text-foreground"
             >

@@ -19,6 +19,7 @@ model Business {
   prontuarioEnabled Boolean      @default(false)
   hasReception      Boolean      @default(false)
   plan              String       @default("trial")
+  inviteCode        String?      @unique
   createdAt         DateTime     @default(now())
   updatedAt         DateTime     @updatedAt
 

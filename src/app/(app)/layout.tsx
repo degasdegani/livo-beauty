@@ -1,8 +1,20 @@
 import type { ReactNode } from "react"
-import Link from "next/link"
+import {
+  Calendar,
+  LayoutDashboard,
+  Package,
+  Receipt,
+  Settings,
+  Sparkles,
+  Truck,
+  UserCog,
+  Users,
+  Wallet,
+} from "lucide-react"
 
 import { canAccessProducts, canManagePayables, requireSessionUser } from "@/lib/access"
 import { ServiceWorkerRegistration } from "@/components/pwa/service-worker-registration"
+import { Sidebar, type SidebarNavItem } from "@/components/layout/sidebar"
 
 export default async function AppLayout({
   children,
@@ -11,92 +23,43 @@ export default async function AppLayout({
 }) {
   const { role } = await requireSessionUser()
 
+  const navItems: SidebarNavItem[] = [
+    { href: "/dashboard", label: "Dashboard", icon: <LayoutDashboard className="h-5 w-5" /> },
+    {
+      href: "/agenda",
+      label: "Agenda",
+      icon: <Calendar className="h-5 w-5" />,
+      subItem: { href: "/agenda/lista", label: "Ver como lista" },
+    },
+    { href: "/clientes", label: "Clientes", icon: <Users className="h-5 w-5" /> },
+    { href: "/profissionais", label: "Profissionais", icon: <UserCog className="h-5 w-5" /> },
+    { href: "/servicos", label: "Serviços", icon: <Sparkles className="h-5 w-5" /> },
+    { href: "/comandas", label: "Comandas", icon: <Receipt className="h-5 w-5" /> },
+    ...(canAccessProducts(role)
+      ? [
+          { href: "/produtos", label: "Produtos", icon: <Package className="h-5 w-5" /> },
+          { href: "/fornecedores", label: "Fornecedores", icon: <Truck className="h-5 w-5" /> },
+        ]
+      : []),
+    ...(canManagePayables(role)
+      ? [{ href: "/financeiro/contas-a-pagar", label: "Financeiro", icon: <Wallet className="h-5 w-5" /> }]
+      : []),
+  ]
+
+  const footerItem: SidebarNavItem = {
+    href: "/configuracoes",
+    label: "Configurações",
+    icon: <Settings className="h-5 w-5" />,
+  }
+
   return (
-    <div className="flex min-h-full flex-col">
+    <div className="flex min-h-full">
       <ServiceWorkerRegistration />
-      <header className="border-b border-border bg-surface">
-        <div className="mx-auto flex max-w-[1440px] items-center gap-8 px-10 py-4">
-          <span className="text-body font-medium text-foreground">
-            LIVO Beauty
-          </span>
-          <nav className="flex items-center gap-6">
-            <Link
-              href="/dashboard"
-              className="text-body-sm text-foreground-secondary transition-colors hover:text-foreground"
-            >
-              Dashboard
-            </Link>
-            <Link
-              href="/agenda"
-              className="text-body-sm text-foreground-secondary transition-colors hover:text-foreground"
-            >
-              Agenda
-            </Link>
-            <Link
-              href="/agenda/lista"
-              className="text-micro text-muted-foreground transition-colors hover:text-foreground-secondary"
-            >
-              Ver como lista
-            </Link>
-            <Link
-              href="/clientes"
-              className="text-body-sm text-foreground-secondary transition-colors hover:text-foreground"
-            >
-              Clientes
-            </Link>
-            <Link
-              href="/profissionais"
-              className="text-body-sm text-foreground-secondary transition-colors hover:text-foreground"
-            >
-              Profissionais
-            </Link>
-            <Link
-              href="/servicos"
-              className="text-body-sm text-foreground-secondary transition-colors hover:text-foreground"
-            >
-              Serviços
-            </Link>
-            <Link
-              href="/comandas"
-              className="text-body-sm text-foreground-secondary transition-colors hover:text-foreground"
-            >
-              Comandas
-            </Link>
-            {canAccessProducts(role) ? (
-              <>
-                <Link
-                  href="/produtos"
-                  className="text-body-sm text-foreground-secondary transition-colors hover:text-foreground"
-                >
-                  Produtos
-                </Link>
-                <Link
-                  href="/fornecedores"
-                  className="text-body-sm text-foreground-secondary transition-colors hover:text-foreground"
-                >
-                  Fornecedores
-                </Link>
-              </>
-            ) : null}
-            {canManagePayables(role) ? (
-              <Link
-                href="/financeiro/contas-a-pagar"
-                className="text-body-sm text-foreground-secondary transition-colors hover:text-foreground"
-              >
-                Financeiro
-              </Link>
-            ) : null}
-            <Link
-              href="/configuracoes"
-              className="text-body-sm text-foreground-secondary transition-colors hover:text-foreground"
-            >
-              Configurações
-            </Link>
-          </nav>
+      <Sidebar items={navItems} footerItem={footerItem} />
+      <main className="flex-1 overflow-y-auto">
+        <div className="mx-auto flex w-full max-w-[1440px] flex-col gap-8 px-10 py-10">
+          {children}
         </div>
-      </header>
-      <main className="mx-auto flex w-full max-w-[1440px] flex-1 flex-col gap-8 px-10 py-10">
-        {children}
       </main>
     </div>
   )

@@ -183,6 +183,15 @@ export function canManageAnamneseSettings(role: UserRole): boolean {
 }
 
 /**
+ * Gerar/regenerar o codigo de convite e decisao de seguranca do negocio
+ * (quem pode trazer profissionais pra dentro do sistema) — mesma regra de
+ * canManageAnamneseSettings.
+ */
+export function canManageInviteCode(role: UserRole): boolean {
+  return role === "OWNER"
+}
+
+/**
  * Todo role autenticado acessa alguma versao do dashboard — o conteudo
  * interno e que varia por role (ver canViewDashboardFinancials). Mantido
  * como funcao, e nao um acesso irrestrito implicito, pelo mesmo motivo dos

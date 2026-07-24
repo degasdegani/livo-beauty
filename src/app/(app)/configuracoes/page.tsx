@@ -9,12 +9,18 @@ import { PushNotificationToggle } from "@/components/pwa/push-notification-toggl
 import { ProntuarioToggle } from "./prontuario-toggle"
 import { AnamneseCustomFields } from "./anamnese-custom-fields"
 import { listAnamneseCustomFields } from "./anamnese-fields-actions"
-import { canManageAnamneseSettings, requireSessionUser } from "@/lib/access"
+import { InviteCodeCard } from "./invite-code-card"
+import {
+  canManageAnamneseSettings,
+  canManageInviteCode,
+  requireSessionUser,
+} from "@/lib/access"
 import { prisma } from "@/lib/prisma"
 
 export default async function ConfiguracoesPage() {
   const { businessId, role } = await requireSessionUser()
   const canManageAnamnese = canManageAnamneseSettings(role)
+  const canManageInvite = canManageInviteCode(role)
 
   const business = canManageAnamnese
     ? await prisma.business.findUniqueOrThrow({
@@ -62,6 +68,21 @@ export default async function ConfiguracoesPage() {
             {business.prontuarioEnabled ? (
               <AnamneseCustomFields fields={customFields} />
             ) : null}
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {canManageInvite ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Convite de profissionais</CardTitle>
+            <CardDescription>
+              Gere um link para que profissionais criem a própria conta
+              vinculada ao seu negócio.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <InviteCodeCard />
           </CardContent>
         </Card>
       ) : null}

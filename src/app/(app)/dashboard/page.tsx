@@ -7,13 +7,16 @@ import { Badge } from "@/components/ui/badge"
 import { STATUS_BADGE_VARIANT, STATUS_LABEL } from "../agenda/status"
 import type { FaturamentoByProfessional } from "../relatorios/actions"
 import {
+  getDashboardKpiTrends,
   getDashboardOwnCommission,
   getDashboardOwnerKpis,
   getDashboardRevenueChart,
   getDashboardTodayAppointments,
+  type DashboardKpiTrend,
   type DashboardTodayAppointment,
 } from "./actions"
 import { RevenueChart } from "./revenue-chart"
+import { Sparkline } from "./sparkline"
 
 /**
  * Fase 2 do dashboard: Agenda de hoje (todos os papeis) + grafico de
@@ -55,18 +58,35 @@ export default async function DashboardPage({
 }
 
 async function OwnerDashboard({ period }: { period: 7 | 30 }) {
-  const [kpis, chartData] = await Promise.all([
+  const [kpis, trends, chartData] = await Promise.all([
     getDashboardOwnerKpis(),
+    getDashboardKpiTrends(),
     getDashboardRevenueChart(period),
   ])
 
   return (
     <div className="flex flex-col gap-8">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard title="Receita hoje" value={formatDecimalToBRL(kpis.revenueToday)} />
-        <KpiCard title="Receita do mês" value={formatDecimalToBRL(kpis.revenueMonth)} />
-        <KpiCard title="Novos clientes no mês" value={String(kpis.newClientsThisMonth)} />
-        <KpiCard title="Clientes ativos" value={String(kpis.activeClients)} />
+        <KpiCard
+          title="Receita hoje"
+          value={formatDecimalToBRL(kpis.revenueToday)}
+          trend={{ ...trends.revenueToday, label: "vs ontem" }}
+        />
+        <KpiCard
+          title="Receita do mês"
+          value={formatDecimalToBRL(kpis.revenueMonth)}
+          trend={{ ...trends.revenueMonth, label: "vs mês anterior" }}
+        />
+        <KpiCard
+          title="Novos clientes no mês"
+          value={String(kpis.newClientsThisMonth)}
+          trend={{ ...trends.newClientsThisMonth, label: "vs mês anterior" }}
+        />
+        <KpiCard
+          title="Clientes ativos"
+          value={String(kpis.activeClients)}
+          trend={{ ...trends.activeClients, label: "vs 30 dias atrás" }}
+        />
       </div>
 
       <section className="flex flex-col gap-4">
@@ -203,11 +223,48 @@ function PeriodLink({ period, active }: { period: 7 | 30; active: boolean }) {
   )
 }
 
-function KpiCard({ title, value }: { title: string; value: string }) {
+function KpiCard({
+  title,
+  value,
+  trend,
+}: {
+  title: string
+  value: string
+  trend?: DashboardKpiTrend & { label: string }
+}) {
+  // changePct null ou > 0 -> success (ver invariante em pctChange: null so
+  // ocorre quando o valor atual e positivo, entao e sempre um caso "positivo
+  // sem base de comparacao", tratado visualmente como crescimento).
+  const trendColorClass =
+    trend == null || trend.changePct === 0
+      ? "text-muted-foreground"
+      : trend.changePct == null || trend.changePct > 0
+        ? "text-success"
+        : "text-error"
+
   return (
     <div className="flex flex-col gap-1 rounded-xl border border-border bg-surface p-5">
       <span className="text-body-sm text-foreground-secondary">{title}</span>
       <span className="text-h3 font-medium text-foreground">{value}</span>
+
+      {trend ? (
+        <div className="mt-2 flex items-end justify-between gap-3">
+          <div className="flex flex-col gap-0.5">
+            {trend.changePct == null ? (
+              <span className={`text-micro font-medium ${trendColorClass}`}>▲ Novo</span>
+            ) : trend.changePct === 0 ? (
+              <span className="text-micro font-medium text-muted-foreground">0,0%</span>
+            ) : (
+              <span className={`text-micro font-medium ${trendColorClass}`}>
+                {trend.changePct > 0 ? "▲" : "▼"} {Math.abs(trend.changePct).toFixed(1)}%
+              </span>
+            )}
+            <span className="text-micro text-muted-foreground">{trend.label}</span>
+          </div>
+
+          <Sparkline data={trend.sparkline} className={`h-8 w-16 shrink-0 ${trendColorClass}`} />
+        </div>
+      ) : null}
     </div>
   )
 }

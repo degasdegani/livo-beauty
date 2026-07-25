@@ -2,59 +2,46 @@
 
 import * as React from "react"
 
+import { PeriodSelector, type PeriodSelectorValue } from "@/components/period-selector"
 import { formatDecimalToBRL } from "@/lib/masks"
+import type { PeriodPreset } from "@/lib/period"
 import { getCashFlow, type CashFlowResult } from "../actions"
 
 export function CashFlowView({
-  initialStartDate,
-  initialEndDate,
+  initialPreset,
+  initialStart,
+  initialEnd,
   initialResult,
 }: {
-  initialStartDate: string
-  initialEndDate: string
+  initialPreset: PeriodPreset
+  initialStart: string
+  initialEnd: string
   initialResult: CashFlowResult
 }) {
-  const [startDate, setStartDate] = React.useState(initialStartDate)
-  const [endDate, setEndDate] = React.useState(initialEndDate)
+  const [period, setPeriod] = React.useState<PeriodSelectorValue>({
+    preset: initialPreset,
+    start: initialStart,
+    end: initialEnd,
+  })
   const [result, setResult] = React.useState(initialResult)
   const [isPending, startTransition] = React.useTransition()
 
-  function reload(nextStartDate: string, nextEndDate: string) {
+  function handlePeriodChange(next: PeriodSelectorValue) {
+    setPeriod(next)
     startTransition(async () => {
-      const nextResult = await getCashFlow(nextStartDate, nextEndDate)
+      const nextResult = await getCashFlow(next.start, next.end)
       setResult(nextResult)
     })
   }
 
-  function handleStartDateChange(value: string) {
-    if (!value) return
-    setStartDate(value)
-    reload(value, endDate)
-  }
-
-  function handleEndDateChange(value: string) {
-    if (!value) return
-    setEndDate(value)
-    reload(startDate, value)
-  }
-
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-center gap-2">
-        <input
-          type="date"
-          value={startDate}
-          onChange={(event) => handleStartDateChange(event.target.value)}
-          className="h-8 rounded-lg border border-input bg-surface px-2.5 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-        />
-        <span className="text-body-sm text-muted-foreground">até</span>
-        <input
-          type="date"
-          value={endDate}
-          onChange={(event) => handleEndDateChange(event.target.value)}
-          className="h-8 rounded-lg border border-input bg-surface px-2.5 text-sm text-foreground outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-        />
-      </div>
+      <PeriodSelector
+        value={period.preset}
+        customStart={period.preset === "personalizado" ? period.start : undefined}
+        customEnd={period.preset === "personalizado" ? period.end : undefined}
+        onChange={handlePeriodChange}
+      />
 
       <div
         className={`grid grid-cols-1 gap-4 sm:grid-cols-3 ${

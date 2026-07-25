@@ -1,12 +1,27 @@
 "use client"
 
-import type { FormEvent } from "react"
+import { Suspense, type FormEvent } from "react"
 import { signIn } from "next-auth/react"
+import { useSearchParams } from "next/navigation"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 
-export default function LoginPage() {
+function SignupSuccessMessage() {
+  const searchParams = useSearchParams()
+
+  if (searchParams.get("cadastro") !== "sucesso") {
+    return null
+  }
+
+  return (
+    <p className="rounded-lg bg-success-light px-3 py-2 text-body-sm text-success">
+      Conta criada com sucesso! Faça login para continuar.
+    </p>
+  )
+}
+
+function LoginForm() {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
@@ -33,6 +48,8 @@ export default function LoginPage() {
           </p>
         </div>
 
+        <SignupSuccessMessage />
+
         <div className="flex flex-col gap-1.5">
           <label
             htmlFor="email"
@@ -58,5 +75,13 @@ export default function LoginPage() {
         </Button>
       </form>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginForm />
+    </Suspense>
   )
 }

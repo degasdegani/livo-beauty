@@ -1,5 +1,7 @@
+import { redirect } from "next/navigation"
+
 import { prisma } from "@/lib/prisma"
-import { requireBusinessId } from "@/lib/session"
+import { canManageProfessionals, requireSessionUser } from "@/lib/access"
 import { toggleProfessionalActive } from "./actions"
 import { Button, LinkButton } from "@/components/ui/button"
 import {
@@ -19,7 +21,11 @@ const categoryLabel: Record<string, string> = {
 }
 
 export default async function ProfissionaisPage() {
-  const businessId = await requireBusinessId()
+  const { businessId, role } = await requireSessionUser()
+
+  if (!canManageProfessionals(role)) {
+    redirect("/dashboard")
+  }
 
   const professionals = await prisma.professional.findMany({
     where: { businessId },

@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 
 import { prisma } from "@/lib/prisma"
-import { requireBusinessId } from "@/lib/session"
+import { canManageProfessionals, requireSessionUser } from "@/lib/access"
 import type { ProfessionalCategory } from "@/generated/prisma/client"
 
 // Decimal(5,2): 0 a 100, ate 2 casas decimais (ex: "40", "37.5", "37.50").
@@ -15,7 +15,11 @@ function isValidCommissionPercent(raw: string): boolean {
 }
 
 export async function createProfessional(formData: FormData) {
-  const businessId = await requireBusinessId()
+  const { businessId, role } = await requireSessionUser()
+
+  if (!canManageProfessionals(role)) {
+    throw new Error("Sem permissao para gerenciar profissionais.")
+  }
 
   const name = String(formData.get("name") ?? "").trim()
   const phone = String(formData.get("phone") ?? "").replace(/\D/g, "")
@@ -43,7 +47,11 @@ export async function createProfessional(formData: FormData) {
 }
 
 export async function updateProfessional(id: string, formData: FormData) {
-  const businessId = await requireBusinessId()
+  const { businessId, role } = await requireSessionUser()
+
+  if (!canManageProfessionals(role)) {
+    throw new Error("Sem permissao para gerenciar profissionais.")
+  }
 
   const name = String(formData.get("name") ?? "").trim()
   const phone = String(formData.get("phone") ?? "").replace(/\D/g, "")
@@ -71,7 +79,11 @@ export async function updateProfessional(id: string, formData: FormData) {
 }
 
 export async function toggleProfessionalActive(id: string, active: boolean) {
-  const businessId = await requireBusinessId()
+  const { businessId, role } = await requireSessionUser()
+
+  if (!canManageProfessionals(role)) {
+    throw new Error("Sem permissao para gerenciar profissionais.")
+  }
 
   await prisma.professional.updateMany({
     where: { id, businessId },
@@ -85,7 +97,11 @@ export async function addProfessionalService(
   professionalId: string,
   formData: FormData
 ) {
-  const businessId = await requireBusinessId()
+  const { businessId, role } = await requireSessionUser()
+
+  if (!canManageProfessionals(role)) {
+    throw new Error("Sem permissao para gerenciar profissionais.")
+  }
 
   const serviceId = String(formData.get("serviceId") ?? "").trim()
   const commissionPercent = String(
@@ -131,7 +147,11 @@ export async function updateProfessionalServiceCommission(
   professionalServiceId: string,
   formData: FormData
 ) {
-  const businessId = await requireBusinessId()
+  const { businessId, role } = await requireSessionUser()
+
+  if (!canManageProfessionals(role)) {
+    throw new Error("Sem permissao para gerenciar profissionais.")
+  }
 
   const commissionPercent = String(
     formData.get("commissionPercent") ?? ""
@@ -157,7 +177,11 @@ export async function removeProfessionalService(
   professionalId: string,
   professionalServiceId: string
 ) {
-  const businessId = await requireBusinessId()
+  const { businessId, role } = await requireSessionUser()
+
+  if (!canManageProfessionals(role)) {
+    throw new Error("Sem permissao para gerenciar profissionais.")
+  }
 
   await prisma.professionalService.deleteMany({
     where: {

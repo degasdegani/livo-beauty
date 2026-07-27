@@ -12,7 +12,7 @@ import {
   Wallet,
 } from "lucide-react"
 
-import { canAccessProducts, canManagePayables, requireSessionUser } from "@/lib/access"
+import { canAccessProducts, canManagePayables, canManageProfessionals, requireSessionUser } from "@/lib/access"
 import { ServiceWorkerRegistration } from "@/components/pwa/service-worker-registration"
 import { Sidebar, type SidebarNavItem } from "@/components/layout/sidebar"
 
@@ -32,7 +32,9 @@ export default async function AppLayout({
       subItem: { href: "/agenda/lista", label: "Ver como lista" },
     },
     { href: "/clientes", label: "Clientes", icon: <Users className="h-5 w-5" /> },
-    { href: "/profissionais", label: "Profissionais", icon: <UserCog className="h-5 w-5" /> },
+    ...(canManageProfessionals(role)
+      ? [{ href: "/profissionais", label: "Profissionais", icon: <UserCog className="h-5 w-5" /> }]
+      : []),
     { href: "/servicos", label: "Serviços", icon: <Sparkles className="h-5 w-5" /> },
     { href: "/comandas", label: "Comandas", icon: <Receipt className="h-5 w-5" /> },
     ...(canAccessProducts(role)

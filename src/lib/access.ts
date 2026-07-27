@@ -128,6 +128,16 @@ export function canManagePayables(role: UserRole): boolean {
 }
 
 /**
+ * Tela /profissionais (criar, editar, ativar/desativar, % de comissao) e
+ * gestao de equipe e remuneracao — so o OWNER acessa, mesma regra de
+ * canManagePayables. STAFF e PROFESSIONAL nao podem ver nem editar dados
+ * de outros profissionais.
+ */
+export function canManageProfessionals(role: UserRole): boolean {
+  return role === "OWNER"
+}
+
+/**
  * Prontuario/Anamnese e dado sensivel de saude (LGPD) — STAFF nao acessa
  * conteudo clinico, decisao de produto ja fechada, nao e omissao.
  */

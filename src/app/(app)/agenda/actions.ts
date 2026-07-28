@@ -8,6 +8,7 @@ import {
   hasAppointmentConflict as hasConflict,
   hasProfessionalBlockConflict as hasBlockConflict,
 } from "@/lib/appointment-conflicts"
+import { resolveClient } from "@/lib/resolve-client"
 import { requireBusinessId, requireProfessionalId } from "@/lib/session"
 import {
   canOpenCommand,
@@ -50,22 +51,6 @@ function parseServiceIds(formData: FormData): string[] {
     .getAll("serviceIds")
     .map((value) => String(value))
     .filter(Boolean)
-}
-
-async function resolveClient(
-  businessId: string,
-  name: string,
-  phone: string
-) {
-  const existing = await prisma.client.findFirst({
-    where: { businessId, phone },
-  })
-
-  if (existing) return existing
-
-  return prisma.client.create({
-    data: { businessId, name, phone, fullProfileCompleted: false },
-  })
 }
 
 /** Busca os servicos e calcula o horario de termino somando as duracoes. */

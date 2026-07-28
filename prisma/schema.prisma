@@ -34,10 +34,11 @@ model Business {
   commands      Command[]
   transactions  Transaction[]
   payables      Payable[]
+  notifications Notification[]
 
-  anamneseRecords       AnamneseRecord[]
-  anamneseCustomFields  AnamneseCustomField[]
-  anamnesePhotos        AnamnesePhoto[]
+  anamneseRecords      AnamneseRecord[]
+  anamneseCustomFields AnamneseCustomField[]
+  anamnesePhotos       AnamnesePhoto[]
 
   @@map("businesses")
 }
@@ -137,6 +138,7 @@ model Professional {
   commandItems         CommandItem[]
   professionalProducts ProfessionalProduct[]
   payables             Payable[]
+  notifications        Notification[]
   createdAt            DateTime              @default(now())
   updatedAt            DateTime              @updatedAt
 
@@ -251,24 +253,27 @@ model ProfessionalBlock {
 }
 
 model Appointment {
-  id                 String               @id @default(cuid())
-  businessId         String
-  business           Business             @relation(fields: [businessId], references: [id], onDelete: Cascade)
-  professionalId     String
-  professional       Professional         @relation(fields: [professionalId], references: [id], onDelete: Restrict)
-  clientId           String
-  client             Client               @relation(fields: [clientId], references: [id], onDelete: Restrict)
-  startAt            DateTime
-  endAt              DateTime
-  room               String?
-  status             AppointmentStatus    @default(CONFIRMADO)
-  notes              String?
-  services           AppointmentService[]
-  command            Command?
-  anamnesePhotos     AnamnesePhoto[]
-  pushReminderSentAt DateTime?
-  createdAt          DateTime             @default(now())
-  updatedAt          DateTime             @updatedAt
+  id                   String               @id @default(cuid())
+  businessId           String
+  business             Business             @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  professionalId       String
+  professional         Professional         @relation(fields: [professionalId], references: [id], onDelete: Restrict)
+  clientId             String
+  client               Client               @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  startAt              DateTime
+  endAt                DateTime
+  room                 String?
+  status               AppointmentStatus    @default(CONFIRMADO)
+  notes                String?
+  services             AppointmentService[]
+  command              Command?
+  anamnesePhotos       AnamnesePhoto[]
+  pushReminderSentAt   DateTime?
+  source               AppointmentSource    @default(INTERNAL)
+  publicManageToken    String?              @unique
+  clientReminderSentAt DateTime?
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
 
   @@index([businessId])
   @@index([professionalId, startAt])
@@ -282,6 +287,11 @@ enum AppointmentStatus {
   CANCELADO
   AUSENTE
   REAGENDADO
+}
+
+enum AppointmentSource {
+  INTERNAL
+  PUBLIC_BOOKING
 }
 
 model AppointmentService {
@@ -307,6 +317,26 @@ model PushSubscription {
 
   @@index([professionalId])
   @@map("push_subscriptions")
+}
+
+model Notification {
+  id             String           @id @default(cuid())
+  businessId     String
+  business       Business         @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  professionalId String
+  professional   Professional     @relation(fields: [professionalId], references: [id], onDelete: Cascade)
+  type           NotificationType
+  appointmentId  String?
+  message        String
+  read           Boolean          @default(false)
+  createdAt      DateTime         @default(now())
+
+  @@index([professionalId, read])
+  @@map("notifications")
+}
+
+enum NotificationType {
+  NOVO_AGENDAMENTO_PUBLICO
 }
 
 // ---------- PRODUTOS / ESTOQUE ----------

@@ -158,29 +158,31 @@ function PublicBookingWizard({
     }
 
     setIsSubmitting(true)
-    try {
-      const result = await createPublicAppointment({
-        businessId,
-        serviceId: selectedServiceId,
-        professionalId:
-          selectedProfessionalId === ANY_PROFESSIONAL ? null : selectedProfessionalId,
-        dateStr: selectedDate,
-        time: selectedTime,
-        clientName: cleanName,
-        clientPhone: cleanPhoneDigits,
-      })
 
-      if (result.error) {
-        setSubmitError(result.error)
-        return
-      }
+    const result = await createPublicAppointment({
+      businessId,
+      serviceId: selectedServiceId,
+      professionalId:
+        selectedProfessionalId === ANY_PROFESSIONAL ? null : selectedProfessionalId,
+      dateStr: selectedDate,
+      time: selectedTime,
+      clientName: cleanName,
+      clientPhone: cleanPhoneDigits,
+    })
 
-      if (result.token) {
-        router.push(`/agendar/${slug}/confirmado/${result.token}`)
-      }
-    } finally {
+    if (result.error) {
+      setSubmitError(result.error)
       setIsSubmitting(false)
+      return
     }
+
+    if (result.token) {
+      router.push(`/agendar/${slug}/confirmado/${result.token}`)
+      return
+    }
+
+    // Fallback defensivo: nem error nem token (não deveria acontecer)
+    setIsSubmitting(false)
   }
 
   return (

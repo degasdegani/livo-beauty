@@ -4,6 +4,10 @@ import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
 
 import { prisma } from "@/lib/prisma"
+import {
+  hasAppointmentConflict as hasConflict,
+  hasProfessionalBlockConflict as hasBlockConflict,
+} from "@/lib/appointment-conflicts"
 import { requireBusinessId, requireProfessionalId } from "@/lib/session"
 import {
   canOpenCommand,
@@ -29,7 +33,6 @@ export type AppointmentFormState = {
   error?: string
 }
 
-const CLOSED_STATUSES: AppointmentStatus[] = ["CANCELADO", "CONCLUIDO"]
 const COMMAND_CANCELING_STATUSES: AppointmentStatus[] = ["AUSENTE", "CANCELADO"]
 const MIN_APPOINTMENT_DURATION_MS = 15 * 60_000
 
@@ -86,44 +89,6 @@ async function loadServicesAndComputeEnd(
   const endAt = new Date(startAt.getTime() + totalMinutes * 60_000)
 
   return { services, endAt }
-}
-
-async function hasConflict(
-  professionalId: string,
-  startAt: Date,
-  endAt: Date,
-  excludeAppointmentId?: string
-): Promise<boolean> {
-  const conflict = await prisma.appointment.findFirst({
-    where: {
-      professionalId,
-      status: { notIn: CLOSED_STATUSES },
-      startAt: { lt: endAt },
-      endAt: { gt: startAt },
-      ...(excludeAppointmentId ? { id: { not: excludeAppointmentId } } : {}),
-    },
-    select: { id: true },
-  })
-
-  return conflict !== null
-}
-
-/** Bloqueios de agenda (ferias, folga etc) tambem nao podem ser sobrepostos por um agendamento. */
-async function hasBlockConflict(
-  professionalId: string,
-  startAt: Date,
-  endAt: Date
-): Promise<boolean> {
-  const conflict = await prisma.professionalBlock.findFirst({
-    where: {
-      professionalId,
-      startAt: { lt: endAt },
-      endAt: { gt: startAt },
-    },
-    select: { id: true },
-  })
-
-  return conflict !== null
 }
 
 const CLIENT_SEARCH_MIN_DIGITS = 3

@@ -231,3 +231,143 @@ export async function createPublicAppointment(params: {
 
   return { token }
 }
+
+export type PublicAppointmentDetails = {
+  id: string
+  status: "CONFIRMADO" | "EM_ATENDIMENTO" | "CONCLUIDO" | "CANCELADO" | "AUSENTE" | "REAGENDADO"
+  businessName: string
+  professionalId: string
+  professionalName: string
+  serviceNames: string[]
+  startAt: string // ISO string, serializavel para client component
+  clientName: string
+  clientPhone: string
+}
+
+/**
+ * Busca cega por token — retorna null tanto para token inexistente quanto
+ * para token de outro businessId (nunca diferenciar a mensagem de erro).
+ */
+export async function getPublicAppointmentByToken(
+  businessId: string,
+  token: string
+): Promise<PublicAppointmentDetails | null> {
+  const appointment = await prisma.appointment.findFirst({
+    where: { publicManageToken: token, businessId },
+    include: {
+      business: true,
+      professional: true,
+      client: true,
+      services: { include: { service: true } },
+    },
+  })
+  if (!appointment) return null
+
+  return {
+    id: appointment.id,
+    status: appointment.status,
+    businessName: appointment.business.name,
+    professionalId: appointment.professionalId,
+    professionalName: appointment.professional.name,
+    serviceNames: appointment.services.map((s) => s.service.name),
+    startAt: appointment.startAt.toISOString(),
+    clientName: appointment.client.name,
+    clientPhone: appointment.client.phone,
+  }
+}
+
+export type CancelPublicAppointmentResult = { error?: string }
+
+export async function cancelPublicAppointment(
+  businessId: string,
+  token: string
+): Promise<CancelPublicAppointmentResult> {
+  const appointment = await prisma.appointment.findFirst({
+    where: { publicManageToken: token, businessId },
+  })
+  if (!appointment) return { error: "Agendamento nao encontrado." }
+  if (appointment.status === "CANCELADO") {
+    return { error: "Este agendamento ja foi cancelado." }
+  }
+
+  await prisma.appointment.updateMany({
+    where: { id: appointment.id },
+    data: { status: "CANCELADO" },
+  })
+
+  // Mesma logica de cancelOpenCommandForAppointment em agenda/actions.ts —
+  // se houver Command ABERTA vinculada, cancela ela tambem (sem gerar
+  // Transaction/Payable). Nao importar de agenda/actions.ts (nao exportada
+  // de la) — replicar aqui, mesmo padrao exato.
+  await prisma.command.updateMany({
+    where: { appointmentId: appointment.id, status: "ABERTA" },
+    data: { status: "CANCELADA" },
+  })
+
+  return {}
+}
+
+export type ReschedulePublicAppointmentResult = { error?: string }
+
+/**
+ * Reagenda mantendo o MESMO profissional e servicos do agendamento original
+ * — so muda data/horario. Revalida todas as regras (antecedencia minima,
+ * janela maxima, grid de 30min, conflito) exatamente como
+ * createPublicAppointment, para nao confiar em nada vindo do client.
+ */
+export async function reschedulePublicAppointment(
+  businessId: string,
+  token: string,
+  dateStr: string,
+  time: string
+): Promise<ReschedulePublicAppointmentResult> {
+  const appointment = await prisma.appointment.findFirst({
+    where: { publicManageToken: token, businessId },
+    include: { services: true },
+  })
+  if (!appointment) return { error: "Agendamento nao encontrado." }
+  if (appointment.status === "CANCELADO") {
+    return { error: "Este agendamento ja foi cancelado." }
+  }
+
+  const durationMs = appointment.endAt.getTime() - appointment.startAt.getTime()
+
+  const maxDateStr = shiftDateString(todaySaoPauloDateString(), PUBLIC_BOOKING_MAX_WINDOW_DAYS)
+  if (dateStr > maxDateStr) return { error: "Data fora da janela permitida." }
+
+  const [hh, mm] = time.split(":").map(Number)
+  const startMinutes = hh * 60 + mm
+
+  if (
+    startMinutes < AGENDA_WINDOW_START_MINUTES ||
+    startMinutes % SLOT_MINUTES !== 0
+  ) {
+    return { error: "Horario invalido." }
+  }
+
+  const durationMinutes = durationMs / 60_000
+  const endMinutes = startMinutes + durationMinutes
+  if (endMinutes > AGENDA_WINDOW_END_MINUTES) {
+    return { error: "Horario invalido." }
+  }
+
+  const startAt = combineSaoPauloDateAndMinutes(dateStr, startMinutes)
+  const endAt = new Date(startAt.getTime() + durationMs)
+
+  const minNoticeThreshold = new Date(Date.now() + PUBLIC_BOOKING_MIN_NOTICE_HOURS * 60 * 60 * 1000)
+  if (startAt < minNoticeThreshold) return { error: "Horario muito proximo, escolha outro." }
+
+  if (await hasAppointmentConflict(appointment.professionalId, startAt, endAt, appointment.id)) {
+    return { error: "Este horario acabou de ser ocupado, escolha outro." }
+  }
+  if (await hasProfessionalBlockConflict(appointment.professionalId, startAt, endAt)) {
+    return { error: "Este horario nao esta disponivel, escolha outro." }
+  }
+
+  await prisma.appointment.update({
+    where: { id: appointment.id },
+    data: { startAt, endAt },
+  })
+
+  return {}
+}

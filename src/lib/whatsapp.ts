@@ -14,7 +14,7 @@ export function sanitizePhoneForWhatsapp(phone: string): string {
     : `${BRAZIL_COUNTRY_CODE}${digits}`
 }
 
-function joinServiceNames(names: string[]): string {
+export function joinServiceNames(names: string[]): string {
   if (names.length === 0) return ""
   if (names.length === 1) return names[0]
   return `${names.slice(0, -1).join(", ")} e ${names[names.length - 1]}`
@@ -47,6 +47,15 @@ export function buildNoShowMessage(data: WhatsappAppointmentData): string {
 
 export function buildWhatsappUrl(phone: string, message: string): string {
   return `https://wa.me/${sanitizePhoneForWhatsapp(phone)}?text=${encodeURIComponent(message)}`
+}
+
+export type WhatsappManageLinkData = WhatsappAppointmentData & {
+  manageUrl: string
+}
+
+export function buildManageLinkMessage(data: WhatsappManageLinkData): string {
+  const services = joinServiceNames(data.serviceNames)
+  return `Oi! Aqui esta a confirmacao do meu agendamento na ${data.businessName}: ${formatDateBR(data.startAt)} as ${formatTimeBR(data.startAt)} - ${services} com ${data.professionalName}. Link para cancelar ou reagendar: ${data.manageUrl}`
 }
 
 export type WhatsappLowStockData = {

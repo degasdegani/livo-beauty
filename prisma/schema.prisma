@@ -40,12 +40,62 @@ model Business {
   anamneseCustomFields AnamneseCustomField[]
   anamnesePhotos       AnamnesePhoto[]
 
+  subscription Subscription?
+
   @@map("businesses")
 }
 
 enum BusinessType {
   SALON
   CLINIC
+}
+
+// ---------- BILLING / ASSINATURA ----------
+
+enum BillingCycle {
+  MONTHLY
+  YEARLY
+}
+
+enum SubscriptionStatus {
+  TRIALING
+  ACTIVE
+  PAST_DUE
+  BLOCKED
+  CANCELED
+}
+
+model Subscription {
+  id         String   @id @default(cuid())
+  businessId String   @unique
+  business   Business @relation(fields: [businessId], references: [id])
+
+  asaasCustomerId     String?
+  asaasSubscriptionId String?
+
+  cycle            BillingCycle
+  status           SubscriptionStatus @default(TRIALING)
+  priceAtSignup    String // decimal string, NUNCA float — ex: "69.90"
+  isFoundingMember Boolean            @default(false)
+
+  trialEndsAt      DateTime
+  currentPeriodEnd DateTime?
+  pastDueSince     DateTime?
+  blockedAt        DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("subscriptions")
+}
+
+model FoundingSlotCounter {
+  id           String   @id @default("singleton")
+  claimedCount Int      @default(0)
+  maxSlots     Int      @default(25)
+  updatedAt    DateTime @updatedAt
+
+  @@map("founding_slot_counters")
 }
 
 // ---------- AUTH (Auth.js) ----------

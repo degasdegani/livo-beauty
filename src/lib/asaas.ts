@@ -1,8 +1,6 @@
 // Cliente da API do Asaas (gateway de pagamento das assinaturas). Ver
 // docs/adr para a decisao de nao usar split de pagamento no MVP (CLAUDE.md,
 // secao "Fora de escopo do MVP").
-//
-// NAO implementa ainda: webhook receiver — isso vem no prompt seguinte.
 
 const ASAAS_BASE_URL =
   process.env.ASAAS_ENV === "production"
@@ -87,10 +85,20 @@ export async function createAsaasSubscription(
   })
 }
 
+export type AsaasSubscription = {
+  id: string
+  customer: string
+  status: string
+  value: number
+  cycle: "MONTHLY" | "YEARLY"
+  billingType: AsaasBillingType
+  nextDueDate: string // formato YYYY-MM-DD
+}
+
 export async function getAsaasSubscription(
   asaasSubscriptionId: string
-): Promise<unknown> {
-  return asaasFetch<unknown>(`/subscriptions/${asaasSubscriptionId}`, {
+): Promise<AsaasSubscription> {
+  return asaasFetch<AsaasSubscription>(`/subscriptions/${asaasSubscriptionId}`, {
     method: "GET",
   })
 }
@@ -108,4 +116,10 @@ export async function getAsaasSubscriptionPayments(
     `/subscriptions/${asaasSubscriptionId}/payments`,
     { method: "GET" }
   )
+}
+
+export async function cancelAsaasSubscription(
+  asaasSubscriptionId: string
+): Promise<void> {
+  await asaasFetch(`/subscriptions/${asaasSubscriptionId}`, { method: "DELETE" })
 }

@@ -87,6 +87,7 @@ model Subscription {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([asaasSubscriptionId])
   @@map("subscriptions")
 }
 
@@ -97,6 +98,20 @@ model FoundingSlotCounter {
   updatedAt    DateTime @updatedAt
 
   @@map("founding_slot_counters")
+}
+
+/**
+ * Idempotencia de webhook do Asaas — "id" e o id do evento no payload (ex:
+ * evt_xxx), nao um cuid nosso. Antes de processar um webhook, tenta criar a
+ * linha; erro de unique constraint = evento ja visto (reentrega "at least
+ * once" do Asaas), responde 200 sem reprocessar.
+ */
+model AsaasWebhookEvent {
+  id          String   @id
+  event       String
+  processedAt DateTime @default(now())
+
+  @@map("asaas_webhook_events")
 }
 
 // ---------- AUTH (Auth.js) ----------

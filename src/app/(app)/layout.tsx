@@ -1,4 +1,5 @@
 import type { ReactNode } from "react"
+import { redirect } from "next/navigation"
 import {
   Calendar,
   LayoutDashboard,
@@ -12,7 +13,13 @@ import {
   Wallet,
 } from "lucide-react"
 
-import { canAccessProducts, canManagePayables, canManageProfessionals, requireSessionUser } from "@/lib/access"
+import {
+  canAccessProducts,
+  canManagePayables,
+  canManageProfessionals,
+  getBusinessAccessStatus,
+  requireSessionUser,
+} from "@/lib/access"
 import { ServiceWorkerRegistration } from "@/components/pwa/service-worker-registration"
 import { Sidebar, type SidebarNavItem } from "@/components/layout/sidebar"
 
@@ -21,7 +28,15 @@ export default async function AppLayout({
 }: {
   children: ReactNode
 }) {
-  const { role } = await requireSessionUser()
+  const { businessId, role } = await requireSessionUser()
+
+  // So BLOCKED barra o dashboard inteiro — TRIALING/ACTIVE/PAST_DUE (em
+  // carencia) continuam normais. /assinatura-bloqueada fica FORA do grupo
+  // (app) de proposito, senao este mesmo gate criaria loop de redirect.
+  const { blocked } = await getBusinessAccessStatus(businessId)
+  if (blocked) {
+    redirect("/assinatura-bloqueada")
+  }
 
   const navItems: SidebarNavItem[] = [
     { href: "/dashboard", label: "Dashboard", icon: <LayoutDashboard className="h-5 w-5" /> },

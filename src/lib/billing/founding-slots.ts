@@ -32,3 +32,18 @@ export async function releaseFoundingSlot(): Promise<void> {
     WHERE id = 'singleton'
   `
 }
+
+/**
+ * Leitura pura (sem UPDATE) de quantas vagas de fundador ainda restam, para
+ * exibir na landing/pricing. Numero exato ("faltam N de 25 vagas") e decisao
+ * de produto ja tomada — nao arredondar nem esconder.
+ */
+export async function getRemainingFoundingSlots(): Promise<number> {
+  const counter = await prisma.foundingSlotCounter.findUnique({
+    where: { id: "singleton" },
+  })
+
+  if (!counter) return 0
+
+  return Math.max(counter.maxSlots - counter.claimedCount, 0)
+}

@@ -2,8 +2,7 @@
 // docs/adr para a decisao de nao usar split de pagamento no MVP (CLAUDE.md,
 // secao "Fora de escopo do MVP").
 //
-// NAO implementa ainda: fluxo de cadastro self-service, checkout, nem
-// webhook receiver — isso vem em prompts seguintes.
+// NAO implementa ainda: webhook receiver — isso vem no prompt seguinte.
 
 const ASAAS_BASE_URL =
   process.env.ASAAS_ENV === "production"
@@ -94,4 +93,19 @@ export async function getAsaasSubscription(
   return asaasFetch<unknown>(`/subscriptions/${asaasSubscriptionId}`, {
     method: "GET",
   })
+}
+
+export type AsaasSubscriptionPayment = {
+  id: string
+  invoiceUrl: string
+  status: string
+}
+
+export async function getAsaasSubscriptionPayments(
+  asaasSubscriptionId: string
+): Promise<{ data: AsaasSubscriptionPayment[] }> {
+  return asaasFetch<{ data: AsaasSubscriptionPayment[] }>(
+    `/subscriptions/${asaasSubscriptionId}/payments`,
+    { method: "GET" }
+  )
 }

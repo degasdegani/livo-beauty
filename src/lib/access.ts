@@ -221,3 +221,13 @@ export function canAccessDashboard(role: UserRole): boolean {
 export function canViewDashboardFinancials(role: UserRole): boolean {
   return role === "OWNER"
 }
+
+/**
+ * Assinatura (Subscription) — status do trial, link de checkout do Asaas —
+ * e dado financeiro do negocio, mesma sensibilidade de canManagePayables:
+ * so o OWNER ve. Funcao separada (nao reaproveita canManagePayables) porque
+ * o recurso e outro (Subscription, nao Payable); a regra so coincide hoje.
+ */
+export function canManageSubscription(role: UserRole): boolean {
+  return role === "OWNER"
+}

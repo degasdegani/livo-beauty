@@ -2,7 +2,8 @@ import { redirect } from "next/navigation"
 
 import { auth } from "@/lib/auth"
 import { requireProfessionalId } from "@/lib/session"
-import type { Prisma, UserRole } from "@/generated/prisma/client"
+import { prisma } from "@/lib/prisma"
+import type { Prisma, Subscription, UserRole } from "@/generated/prisma/client"
 
 export async function requireSessionUser() {
   const session = await auth()
@@ -220,4 +221,44 @@ export function canAccessDashboard(role: UserRole): boolean {
  */
 export function canViewDashboardFinancials(role: UserRole): boolean {
   return role === "OWNER"
+}
+
+/**
+ * Assinatura (Subscription) — status do trial, link de checkout do Asaas —
+ * e dado financeiro do negocio, mesma sensibilidade de canManagePayables:
+ * so o OWNER ve. Funcao separada (nao reaproveita canManagePayables) porque
+ * o recurso e outro (Subscription, nao Payable); a regra so coincide hoje.
+ */
+export function canManageSubscription(role: UserRole): boolean {
+  return role === "OWNER"
+}
+
+/**
+ * Status de Subscription com acesso normal ao dashboard. Default-deny de
+ * proposito (lista o que E permitido, nao o que bloqueia) — um status novo
+ * adicionado no futuro (enum SubscriptionStatus) cai em "bloqueado" por
+ * padrao em vez de vazar acesso por esquecimento.
+ */
+const ALLOWED_STATUSES = new Set(["TRIALING", "ACTIVE", "PAST_DUE"])
+
+/**
+ * Gate de acesso ao dashboard por status de assinatura — plugado no layout
+ * do grupo (app) (ver src/app/(app)/layout.tsx). TRIALING, ACTIVE e PAST_DUE
+ * (ainda em carencia, ate o cron /api/cron/subscription-billing bloquear
+ * apos 3 dias) tem acesso normal — a carencia e proposital, nao e pra
+ * derrubar o dono no primeiro dia de atraso. BLOCKED, CANCELED e qualquer
+ * status futuro nao listado em ALLOWED_STATUSES bloqueiam. Sem Subscription
+ * nenhuma tambem bloqueia — nao deveria acontecer no fluxo normal (todo
+ * cadastro cria uma), mas e a opcao segura se acontecer.
+ */
+export async function getBusinessAccessStatus(
+  businessId: string
+): Promise<{ blocked: boolean; subscription: Subscription | null }> {
+  const subscription = await prisma.subscription.findUnique({
+    where: { businessId },
+  })
+
+  const blocked = subscription == null || !ALLOWED_STATUSES.has(subscription.status)
+
+  return { blocked, subscription }
 }
